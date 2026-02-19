@@ -1,0 +1,25 @@
+# Compiled binaries
+/scream
+/skill
+cmd/scream/scream
+cmd/skill/skill
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+*.test
+*.out
+*.prof
+coverage.txt
+
+# Build
+/bin/
+/dist/

@@ -1,0 +1,109 @@
+// Package native provides pure Go audio synthesis and processing.
+package native
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"math"
+
+	"github.com/JamesPrial/go-scream/internal/audio"
+)
+
+// NativeGenerator implements audio.AudioGenerator using pure Go synthesis.
+// It produces s16le PCM audio with a configurable sample rate and channel count.
+type NativeGenerator struct{}
+
+// NewNativeGenerator creates a new NativeGenerator.
+func NewNativeGenerator() *NativeGenerator {
+	return &NativeGenerator{}
+}
+
+// Generate produces PCM audio data in s16le format (little-endian signed 16-bit).
+// The output byte count is: totalSamples * channels * 2, where
+// totalSamples = int(duration.Seconds() * float64(sampleRate)).
+// Returns an error if params fail validation.
+func (g *NativeGenerator) Generate(params audio.ScreamParams) (io.Reader, error) {
+	if err := params.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid params: %w", err)
+	}
+
+	sampleRate := params.SampleRate
+	totalSamples := int(params.Duration.Seconds() * float64(sampleRate))
+	channels := params.Channels
+
+	// Build the 5 synthesis layers from params.
+	layers := buildLayers(params, sampleRate)
+
+	// Create the mixer from all layers.
+	mixer := NewLayerMixer(layers...)
+
+	// Create the filter chain from params.
+	filterChain := NewFilterChainFromParams(params.Filter, sampleRate)
+
+	// Allocate output buffer: totalSamples * channels * 2 bytes per sample.
+	out := make([]byte, totalSamples*channels*2)
+	pos := 0
+
+	for i := 0; i < totalSamples; i++ {
+		t := float64(i) / float64(sampleRate)
+
+		// Mix all layers at time t.
+		raw := mixer.Sample(t)
+
+		// Apply the filter chain.
+		filtered := filterChain.Process(raw)
+
+		// Convert to int16 by scaling and clamping.
+		scaled := filtered * 32767.0
+		clamped := math.Max(-32768, math.Min(32767, scaled))
+		s16 := int16(math.Round(clamped))
+
+		// Encode the sample as little-endian int16 for each channel.
+		lo := byte(uint16(s16))
+		hi := byte(uint16(s16) >> 8)
+		for range channels {
+			out[pos] = lo
+			out[pos+1] = hi
+			pos += 2
+		}
+	}
+
+	return bytes.NewReader(out), nil
+}
+
+// buildLayers creates all 5 synthesis layers from ScreamParams.
+// The global params.Seed is mixed into each layer's seed so that different
+// top-level seeds produce different audio even when LayerParams seeds are identical.
+func buildLayers(params audio.ScreamParams, sampleRate int) []Layer {
+	lp := params.Layers
+	noise := params.Noise
+	globalSeed := params.Seed
+
+	// Derive per-layer seeds that incorporate the global seed.
+	// Using XOR with prime multiples of globalSeed ensures decorrelation.
+	p0 := lp[0]
+	p0.Seed = lp[0].Seed ^ (globalSeed * 1000003)
+
+	p1 := lp[1]
+	p1.Seed = lp[1].Seed ^ (globalSeed * 1000033)
+
+	p2 := lp[2]
+	p2.Seed = lp[2].Seed ^ (globalSeed * 1000037)
+
+	p3 := lp[3]
+	p3.Seed = lp[3].Seed ^ (globalSeed * 1000039)
+
+	noiseWithSeed := noise
+	noiseWithSeed.BurstSeed = noise.BurstSeed ^ (globalSeed * 1000081)
+
+	layers := []Layer{
+		NewPrimaryScreamLayer(p0, sampleRate),
+		NewHarmonicSweepLayer(p1, sampleRate),
+		NewHighShriekLayer(p2, sampleRate),
+		NewNoiseBurstLayer(p3, noiseWithSeed, sampleRate),
+		NewBackgroundNoiseLayer(noiseWithSeed),
+	}
+
+	return layers
+}
