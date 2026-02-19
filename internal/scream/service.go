@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"reflect"
+	"math"
 
 	"github.com/JamesPrial/go-scream/internal/audio"
 	"github.com/JamesPrial/go-scream/internal/config"
@@ -15,31 +15,23 @@ import (
 // Service orchestrates audio generation, encoding, and Discord voice playback.
 type Service struct {
 	cfg       config.Config
-	generator audio.AudioGenerator
+	generator audio.Generator
 	fileEnc   encoding.FileEncoder
 	frameEnc  encoding.OpusFrameEncoder
 	player    discord.VoicePlayer
-	closer    io.Closer
 }
 
 // NewServiceWithDeps constructs a Service with all dependencies explicitly
 // injected. It never returns nil. The player argument may be nil when the
-// service is used in DryRun mode or for file generation only.
+// service is used in DryRun mode or for file generation only. Callers must
+// pass an untyped nil (not a typed-nil interface value) when no player is needed.
 func NewServiceWithDeps(
 	cfg config.Config,
-	gen audio.AudioGenerator,
+	gen audio.Generator,
 	fileEnc encoding.FileEncoder,
 	frameEnc encoding.OpusFrameEncoder,
 	player discord.VoicePlayer,
 ) *Service {
-	// Normalize typed-nil interfaces (e.g. (*ConcreteType)(nil)) to untyped nil
-	// so that s.player == nil works correctly in Play().
-	if player != nil {
-		v := reflect.ValueOf(player)
-		if v.Kind() == reflect.Ptr && v.IsNil() {
-			player = nil
-		}
-	}
 	return &Service{
 		cfg:       cfg,
 		generator: gen,
@@ -124,15 +116,6 @@ func (s *Service) Generate(ctx context.Context, dst io.Writer) error {
 	return nil
 }
 
-// Close releases any resources held by the service. If no closer was set,
-// it returns nil.
-func (s *Service) Close() error {
-	if s.closer == nil {
-		return nil
-	}
-	return s.closer.Close()
-}
-
 // ListPresets returns the names of all available scream presets.
 func ListPresets() []string {
 	names := audio.AllPresets()
@@ -141,4 +124,41 @@ func ListPresets() []string {
 		result[i] = string(n)
 	}
 	return result
+}
+
+// resolveParams derives audio.ScreamParams from the provided Config.
+// If cfg.Preset is set, it looks up the named preset and returns an error
+// if the name is unknown. If cfg.Preset is empty, Randomize is used to
+// generate random parameters. In either case, a positive cfg.Duration
+// overrides the duration from the preset or random params.
+//
+// cfg.Volume is a linear multiplier where 1.0 means no change. It is
+// converted to decibels and applied as an offset to FilterParams.VolumeBoostDB
+// so that the existing preset/random boost is scaled by the user's intent.
+func resolveParams(cfg config.Config) (audio.ScreamParams, error) {
+	var params audio.ScreamParams
+
+	if cfg.Preset != "" {
+		p, ok := audio.GetPreset(audio.PresetName(cfg.Preset))
+		if !ok {
+			return audio.ScreamParams{}, ErrUnknownPreset
+		}
+		params = p
+	} else {
+		params = audio.Randomize(0)
+	}
+
+	if cfg.Duration > 0 {
+		params.Duration = cfg.Duration
+	}
+
+	// Apply volume: cfg.Volume is a linear multiplier (1.0 = no change).
+	// Convert to dB and add to the existing VolumeBoostDB so that the preset
+	// or randomized boost is offset by the user's intent. When Volume == 1.0,
+	// log10(1.0) == 0, so this is a no-op and remains backward-compatible.
+	if cfg.Volume > 0 {
+		params.Filter.VolumeBoostDB += 20 * math.Log10(cfg.Volume)
+	}
+
+	return params, nil
 }

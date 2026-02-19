@@ -17,17 +17,17 @@ type VoicePlayer interface {
 	Play(ctx context.Context, guildID, channelID string, frames <-chan []byte) error
 }
 
-// DiscordPlayer implements VoicePlayer using a Session.
-type DiscordPlayer struct {
+// Player implements VoicePlayer using a Session.
+type Player struct {
 	session Session
 }
 
 // Compile-time interface check.
-var _ VoicePlayer = (*DiscordPlayer)(nil)
+var _ VoicePlayer = (*Player)(nil)
 
-// NewDiscordPlayer returns a VoicePlayer using the provided Session.
-func NewDiscordPlayer(session Session) *DiscordPlayer {
-	return &DiscordPlayer{session: session}
+// NewPlayer returns a VoicePlayer using the provided Session.
+func NewPlayer(session Session) *Player {
+	return &Player{session: session}
 }
 
 // Play joins the specified voice channel, streams all frames from the frames
@@ -36,7 +36,7 @@ func NewDiscordPlayer(session Session) *DiscordPlayer {
 // joining, joining fails, or setting the speaking state fails. If the context
 // is cancelled during playback, silence frames are sent and ctx.Err() is
 // returned.
-func (p *DiscordPlayer) Play(ctx context.Context, guildID, channelID string, frames <-chan []byte) (retErr error) {
+func (p *Player) Play(ctx context.Context, guildID, channelID string, frames <-chan []byte) (retErr error) {
 	// Validate inputs.
 	if guildID == "" {
 		return ErrEmptyGuildID
@@ -79,7 +79,7 @@ loop:
 			silenceCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			sendSilence(silenceCtx, opusSend)
 			cancel()
-			vc.Speaking(false) //nolint:errcheck // best-effort
+			_ = vc.Speaking(false)
 			return ctx.Err()
 		case frame, ok := <-frames:
 			if !ok {
@@ -91,7 +91,7 @@ loop:
 				silenceCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 				sendSilence(silenceCtx, opusSend)
 				cancel()
-				vc.Speaking(false) //nolint:errcheck // best-effort
+				_ = vc.Speaking(false)
 				return ctx.Err()
 			}
 		}

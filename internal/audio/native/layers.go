@@ -11,8 +11,10 @@ type Layer interface {
 	Sample(t float64) float64
 }
 
-// PrimaryScreamLayer generates the main scream tone with frequency jumps.
-type PrimaryScreamLayer struct {
+// SweepJumpLayer generates a scream tone with frequency jumps, parameterised
+// by a coprime constant for deterministic stepping. It is used for both the
+// primary scream and high-shriek synthesis layers.
+type SweepJumpLayer struct {
 	osc       *Oscillator
 	seed      int64
 	base      float64
@@ -20,13 +22,14 @@ type PrimaryScreamLayer struct {
 	jump      float64
 	amp       float64
 	rise      float64
+	coprime   int64
 	curStep   int64
 	curFreq   float64
 }
 
 // NewPrimaryScreamLayer creates a primary scream layer from params.
-func NewPrimaryScreamLayer(p audio.LayerParams, sampleRate int) *PrimaryScreamLayer {
-	return &PrimaryScreamLayer{
+func NewPrimaryScreamLayer(p audio.LayerParams, sampleRate int) *SweepJumpLayer {
+	return &SweepJumpLayer{
 		osc:       NewOscillator(sampleRate),
 		seed:      p.Seed,
 		base:      p.BaseFreq,
@@ -34,17 +37,18 @@ func NewPrimaryScreamLayer(p audio.LayerParams, sampleRate int) *PrimaryScreamLa
 		jump:      p.JumpRate,
 		amp:       p.Amplitude,
 		rise:      p.Rise,
+		coprime:   audio.CoprimePrimaryScream,
 		curStep:   -1,
 	}
 }
 
-// Sample returns the audio sample at time t for the primary scream layer.
-// The frequency jumps at discrete steps determined by the layer seed.
-func (l *PrimaryScreamLayer) Sample(t float64) float64 {
+// Sample returns the audio sample at time t for the sweep-jump layer.
+// The frequency jumps at discrete steps determined by the layer seed and coprime.
+func (l *SweepJumpLayer) Sample(t float64) float64 {
 	step := int64(t * l.jump)
 	if step != l.curStep {
 		l.curStep = step
-		l.curFreq = l.base + l.freqRange*seededRandom(l.seed, step, 137)
+		l.curFreq = l.base + l.freqRange*seededRandom(l.seed, step, l.coprime)
 	}
 	envelope := l.amp * (1 + l.rise*t)
 	return envelope * l.osc.Sin(l.curFreq)
@@ -83,28 +87,16 @@ func (l *HarmonicSweepLayer) Sample(t float64) float64 {
 	step := int64(t * l.jump)
 	if step != l.curStep {
 		l.curStep = step
-		l.curFreq = l.freqRange * seededRandom(l.seed, step, 251)
+		l.curFreq = l.freqRange * seededRandom(l.seed, step, audio.CoprimeHarmonicSweep)
 	}
 	freq := l.base + l.sweep*t + l.curFreq
 	return l.amp * l.osc.Sin(freq)
 }
 
-// HighShriekLayer generates high-frequency shrieks with fast frequency jumps.
-type HighShriekLayer struct {
-	osc       *Oscillator
-	seed      int64
-	base      float64
-	freqRange float64
-	jump      float64
-	amp       float64
-	rise      float64
-	curStep   int64
-	curFreq   float64
-}
-
 // NewHighShriekLayer creates a high shriek layer from params.
-func NewHighShriekLayer(p audio.LayerParams, sampleRate int) *HighShriekLayer {
-	return &HighShriekLayer{
+// It returns a *SweepJumpLayer configured with CoprimeHighShriek.
+func NewHighShriekLayer(p audio.LayerParams, sampleRate int) *SweepJumpLayer {
+	return &SweepJumpLayer{
 		osc:       NewOscillator(sampleRate),
 		seed:      p.Seed,
 		base:      p.BaseFreq,
@@ -112,20 +104,9 @@ func NewHighShriekLayer(p audio.LayerParams, sampleRate int) *HighShriekLayer {
 		jump:      p.JumpRate,
 		amp:       p.Amplitude,
 		rise:      p.Rise,
+		coprime:   audio.CoprimeHighShriek,
 		curStep:   -1,
 	}
-}
-
-// Sample returns the audio sample at time t for the high shriek layer.
-// The envelope rises over time, producing intensifying high-frequency shrieks.
-func (l *HighShriekLayer) Sample(t float64) float64 {
-	step := int64(t * l.jump)
-	if step != l.curStep {
-		l.curStep = step
-		l.curFreq = l.base + l.freqRange*seededRandom(l.seed, step, 89)
-	}
-	envelope := l.amp * (1 + l.rise*t)
-	return envelope * l.osc.Sin(l.curFreq)
 }
 
 // NoiseBurstLayer generates gated noise bursts.
@@ -140,7 +121,7 @@ type NoiseBurstLayer struct {
 }
 
 // NewNoiseBurstLayer creates a noise burst layer from params.
-func NewNoiseBurstLayer(p audio.LayerParams, noise audio.NoiseParams, sampleRate int) *NoiseBurstLayer {
+func NewNoiseBurstLayer(p audio.LayerParams, noise audio.NoiseParams) *NoiseBurstLayer {
 	return &NoiseBurstLayer{
 		burstSeed: noise.BurstSeed,
 		noiseRng:  rand.New(rand.NewSource(noise.BurstSeed)),
@@ -157,7 +138,7 @@ func (l *NoiseBurstLayer) Sample(t float64) float64 {
 	step := int64(t * l.burstRate)
 	if step != l.curStep {
 		l.curStep = step
-		l.curGate = seededRandom(l.burstSeed, step, 173)
+		l.curGate = seededRandom(l.burstSeed, step, audio.CoprimeNoiseBurst)
 	}
 	if l.curGate <= l.threshold {
 		return 0

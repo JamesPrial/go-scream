@@ -23,22 +23,22 @@ type VoiceState struct {
 	GuildID   string
 }
 
-// DiscordGoSession wraps *discordgo.Session to satisfy the Session interface.
-type DiscordGoSession struct {
+// GoSession wraps *discordgo.Session to satisfy the Session interface.
+type GoSession struct {
 	S *discordgo.Session
 }
 
 // ChannelVoiceJoin joins the specified voice channel and returns a VoiceConn.
-func (d *DiscordGoSession) ChannelVoiceJoin(guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
+func (d *GoSession) ChannelVoiceJoin(guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
 	vc, err := d.S.ChannelVoiceJoin(guildID, channelID, mute, deaf)
 	if err != nil {
 		return nil, err
 	}
-	return &DiscordGoVoiceConn{VC: vc}, nil
+	return &GoVoiceConn{VC: vc}, nil
 }
 
 // GuildVoiceStates returns the voice states for all users in the given guild.
-func (d *DiscordGoSession) GuildVoiceStates(guildID string) ([]*VoiceState, error) {
+func (d *GoSession) GuildVoiceStates(guildID string) ([]*VoiceState, error) {
 	guild, err := d.S.State.Guild(guildID)
 	if err != nil {
 		return nil, err
@@ -54,19 +54,19 @@ func (d *DiscordGoSession) GuildVoiceStates(guildID string) ([]*VoiceState, erro
 	return states, nil
 }
 
-// DiscordGoVoiceConn wraps *discordgo.VoiceConnection to satisfy the VoiceConn interface.
-type DiscordGoVoiceConn struct {
+// GoVoiceConn wraps *discordgo.VoiceConnection to satisfy the VoiceConn interface.
+type GoVoiceConn struct {
 	VC *discordgo.VoiceConnection
 }
 
 // Speaking sets the speaking state on the voice connection.
-func (d *DiscordGoVoiceConn) Speaking(speaking bool) error { return d.VC.Speaking(speaking) }
+func (d *GoVoiceConn) Speaking(speaking bool) error { return d.VC.Speaking(speaking) }
 
 // OpusSendChannel returns the channel used to send Opus-encoded audio frames.
-func (d *DiscordGoVoiceConn) OpusSendChannel() chan<- []byte { return d.VC.OpusSend }
+func (d *GoVoiceConn) OpusSendChannel() chan<- []byte { return d.VC.OpusSend }
 
 // Disconnect closes the voice connection.
-func (d *DiscordGoVoiceConn) Disconnect() error { return d.VC.Disconnect() }
+func (d *GoVoiceConn) Disconnect() error { return d.VC.Disconnect() }
 
 // IsReady reports whether the voice connection is ready.
-func (d *DiscordGoVoiceConn) IsReady() bool { return d.VC.Ready }
+func (d *GoVoiceConn) IsReady() bool { return d.VC.Ready }

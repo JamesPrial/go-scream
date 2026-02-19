@@ -12,13 +12,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/bwmarrin/discordgo"
-
-	"github.com/JamesPrial/go-scream/internal/audio"
-	"github.com/JamesPrial/go-scream/internal/audio/ffmpeg"
-	"github.com/JamesPrial/go-scream/internal/audio/native"
+	"github.com/JamesPrial/go-scream/internal/app"
 	"github.com/JamesPrial/go-scream/internal/config"
-	"github.com/JamesPrial/go-scream/internal/discord"
 	"github.com/JamesPrial/go-scream/internal/encoding"
 	"github.com/JamesPrial/go-scream/internal/scream"
 )
@@ -108,40 +103,25 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Select audio generator.
-	var gen audio.AudioGenerator
-	if cfg.Backend == config.BackendFFmpeg {
-		g, err := ffmpeg.NewFFmpegGenerator()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "skill: %v\n", err)
-			os.Exit(1)
-		}
-		gen = g
-	} else {
-		gen = native.NewNativeGenerator()
+	gen, err := app.NewGenerator(string(cfg.Backend))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "skill: %v\n", err)
+		os.Exit(1)
 	}
 
 	frameEnc := encoding.NewGopusFrameEncoder()
-	fileEnc := encoding.NewOGGEncoder()
+	fileEnc := app.NewFileEncoder(string(cfg.Format))
 
-	// Create Discord session.
-	session, err := discordgo.New("Bot " + cfg.Token)
+	player, sessionCloser, err := app.NewDiscordDeps(cfg.Token)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "skill: failed to create discord session: %v\n", err)
-		os.Exit(1)
-	}
-	if err := session.Open(); err != nil {
-		fmt.Fprintf(os.Stderr, "skill: failed to open discord session: %v\n", err)
+		fmt.Fprintf(os.Stderr, "skill: %v\n", err)
 		os.Exit(1)
 	}
 	defer func() {
-		if err := session.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to close discord session: %v\n", err)
+		if cerr := sessionCloser.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close discord session: %v\n", cerr)
 		}
 	}()
-
-	sess := &discord.DiscordGoSession{S: session}
-	player := discord.NewDiscordPlayer(sess)
 
 	svc := scream.NewServiceWithDeps(cfg, gen, fileEnc, frameEnc, player)
 	if err := svc.Play(ctx, cfg.GuildID, channelID); err != nil {

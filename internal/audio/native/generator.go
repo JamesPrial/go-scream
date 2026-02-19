@@ -10,20 +10,20 @@ import (
 	"github.com/JamesPrial/go-scream/internal/audio"
 )
 
-// NativeGenerator implements audio.AudioGenerator using pure Go synthesis.
+// Generator implements audio.Generator using pure Go synthesis.
 // It produces s16le PCM audio with a configurable sample rate and channel count.
-type NativeGenerator struct{}
+type Generator struct{}
 
-// NewNativeGenerator creates a new NativeGenerator.
-func NewNativeGenerator() *NativeGenerator {
-	return &NativeGenerator{}
+// NewGenerator creates a new Generator.
+func NewGenerator() *Generator {
+	return &Generator{}
 }
 
 // Generate produces PCM audio data in s16le format (little-endian signed 16-bit).
 // The output byte count is: totalSamples * channels * 2, where
 // totalSamples = int(duration.Seconds() * float64(sampleRate)).
 // Returns an error if params fail validation.
-func (g *NativeGenerator) Generate(params audio.ScreamParams) (io.Reader, error) {
+func (g *Generator) Generate(params audio.ScreamParams) (io.Reader, error) {
 	if err := params.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid params: %w", err)
 	}
@@ -101,7 +101,7 @@ func buildLayers(params audio.ScreamParams, sampleRate int) []Layer {
 		NewPrimaryScreamLayer(p0, sampleRate),
 		NewHarmonicSweepLayer(p1, sampleRate),
 		NewHighShriekLayer(p2, sampleRate),
-		NewNoiseBurstLayer(p3, noiseWithSeed, sampleRate),
+		NewNoiseBurstLayer(p3, noiseWithSeed),
 		NewBackgroundNoiseLayer(noiseWithSeed),
 	}
 

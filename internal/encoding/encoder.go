@@ -3,7 +3,6 @@
 package encoding
 
 import (
-	"encoding/binary"
 	"errors"
 	"io"
 )
@@ -64,16 +63,3 @@ type FileEncoder interface {
 	Encode(dst io.Writer, src io.Reader, sampleRate, channels int) error
 }
 
-// pcmBytesToInt16 converts a little-endian s16le byte slice to a []int16 slice.
-// Nil or empty input returns an empty (nil) slice. Any trailing odd byte is ignored.
-func pcmBytesToInt16(pcm []byte) []int16 {
-	if len(pcm) < 2 {
-		return nil
-	}
-	n := len(pcm) / 2
-	out := make([]int16, n)
-	for i := 0; i < n; i++ {
-		out[i] = int16(binary.LittleEndian.Uint16(pcm[i*2:]))
-	}
-	return out
-}

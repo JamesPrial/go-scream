@@ -27,6 +27,15 @@ const (
 	LayerBackgroundNoise
 )
 
+// Coprime constants used by both native and ffmpeg backends for
+// deterministic frequency stepping in audio layer generation.
+const (
+	CoprimePrimaryScream int64 = 137
+	CoprimeHarmonicSweep int64 = 251
+	CoprimeHighShriek    int64 = 89
+	CoprimeNoiseBurst    int64 = 173
+)
+
 // LayerParams holds parameters for a single synthesis layer.
 type LayerParams struct {
 	Type      LayerType

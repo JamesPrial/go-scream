@@ -3,13 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/spf13/cobra"
 
 	"github.com/JamesPrial/go-scream/internal/config"
+	"github.com/JamesPrial/go-scream/internal/scream"
 )
 
 var playCmd = &cobra.Command{
@@ -55,20 +53,7 @@ func runPlay(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintln(cmd.OutOrStdout())
 	}
 
-	// Create context with signal handling.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	svc, closer, err := newServiceFromConfig(cfg)
-	if err != nil {
-		return err
-	}
-	if closer != nil {
-		defer func() {
-			if cerr := closer.Close(); cerr != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to close session: %v\n", cerr)
-			}
-		}()
-	}
-	return svc.Play(ctx, cfg.GuildID, channelID)
+	return runWithService(cfg, func(ctx context.Context, svc *scream.Service) error {
+		return svc.Play(ctx, cfg.GuildID, channelID)
+	})
 }

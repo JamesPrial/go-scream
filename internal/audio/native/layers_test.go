@@ -64,9 +64,9 @@ func validNoiseParams() audio.NoiseParams {
 	}
 }
 
-// --- PrimaryScreamLayer Tests ---
+// --- SweepJumpLayer Tests (PrimaryScream constructor) ---
 
-func TestPrimaryScreamLayer_NonZeroOutput(t *testing.T) {
+func TestSweepJumpLayer_PrimaryScream_NonZeroOutput(t *testing.T) {
 	layer := NewPrimaryScreamLayer(validPrimaryScreamParams(), testSampleRate)
 
 	hasNonZero := false
@@ -79,11 +79,11 @@ func TestPrimaryScreamLayer_NonZeroOutput(t *testing.T) {
 		}
 	}
 	if !hasNonZero {
-		t.Error("PrimaryScreamLayer produced all zero samples for first 1000 samples")
+		t.Error("SweepJumpLayer (PrimaryScream) produced all zero samples for first 1000 samples")
 	}
 }
 
-func TestPrimaryScreamLayer_AmplitudeBounds(t *testing.T) {
+func TestSweepJumpLayer_PrimaryScream_AmplitudeBounds(t *testing.T) {
 	p := validPrimaryScreamParams()
 	layer := NewPrimaryScreamLayer(p, testSampleRate)
 
@@ -123,9 +123,9 @@ func TestHarmonicSweepLayer_NonZeroOutput(t *testing.T) {
 	}
 }
 
-// --- HighShriekLayer Tests ---
+// --- SweepJumpLayer Tests (HighShriek constructor) ---
 
-func TestHighShriekLayer_NonZeroOutput(t *testing.T) {
+func TestSweepJumpLayer_HighShriek_NonZeroOutput(t *testing.T) {
 	layer := NewHighShriekLayer(validHighShriekParams(), testSampleRate)
 
 	hasNonZero := false
@@ -138,11 +138,11 @@ func TestHighShriekLayer_NonZeroOutput(t *testing.T) {
 		}
 	}
 	if !hasNonZero {
-		t.Error("HighShriekLayer produced all zero samples for first 1000 samples")
+		t.Error("SweepJumpLayer (HighShriek) produced all zero samples for first 1000 samples")
 	}
 }
 
-func TestHighShriekLayer_EnvelopeRises(t *testing.T) {
+func TestSweepJumpLayer_HighShriek_EnvelopeRises(t *testing.T) {
 	layer := NewHighShriekLayer(validHighShriekParams(), testSampleRate)
 
 	// Collect average absolute amplitude over two different time windows.
@@ -185,7 +185,7 @@ func TestHighShriekLayer_EnvelopeRises(t *testing.T) {
 func TestNoiseBurstLayer_HasSilentAndActiveSegments(t *testing.T) {
 	np := validNoiseParams()
 	lp := validNoiseBurstParams()
-	layer := NewNoiseBurstLayer(lp, np, testSampleRate)
+	layer := NewNoiseBurstLayer(lp, np)
 
 	hasZero := false
 	hasNonZero := false
@@ -300,7 +300,7 @@ func TestLayerMixer_ZeroLayers(t *testing.T) {
 
 // --- Benchmarks ---
 
-func BenchmarkPrimaryScreamLayer(b *testing.B) {
+func BenchmarkSweepJumpLayer_PrimaryScream(b *testing.B) {
 	layer := NewPrimaryScreamLayer(validPrimaryScreamParams(), testSampleRate)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -313,7 +313,7 @@ func BenchmarkLayerMixer(b *testing.B) {
 		NewPrimaryScreamLayer(validPrimaryScreamParams(), testSampleRate),
 		NewHarmonicSweepLayer(validHarmonicSweepParams(), testSampleRate),
 		NewHighShriekLayer(validHighShriekParams(), testSampleRate),
-		NewNoiseBurstLayer(validNoiseBurstParams(), validNoiseParams(), testSampleRate),
+		NewNoiseBurstLayer(validNoiseBurstParams(), validNoiseParams()),
 		NewBackgroundNoiseLayer(validNoiseParams()),
 	}
 	mixer := NewLayerMixer(layers...)

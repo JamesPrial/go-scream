@@ -34,8 +34,8 @@ func testScreamParams() audio.ScreamParams {
 	}
 }
 
-func TestNativeGenerator_CorrectByteCount(t *testing.T) {
-	gen := NewNativeGenerator()
+func TestGenerator_CorrectByteCount(t *testing.T) {
+	gen := NewGenerator()
 	params := testScreamParams()
 
 	reader, err := gen.Generate(params)
@@ -55,8 +55,8 @@ func TestNativeGenerator_CorrectByteCount(t *testing.T) {
 	}
 }
 
-func TestNativeGenerator_NonSilent(t *testing.T) {
-	gen := NewNativeGenerator()
+func TestGenerator_NonSilent(t *testing.T) {
+	gen := NewGenerator()
 	params := testScreamParams()
 
 	reader, err := gen.Generate(params)
@@ -82,8 +82,8 @@ func TestNativeGenerator_NonSilent(t *testing.T) {
 	}
 }
 
-func TestNativeGenerator_Deterministic(t *testing.T) {
-	gen := NewNativeGenerator()
+func TestGenerator_Deterministic(t *testing.T) {
+	gen := NewGenerator()
 	params := testScreamParams()
 
 	reader1, err := gen.Generate(params)
@@ -109,8 +109,8 @@ func TestNativeGenerator_Deterministic(t *testing.T) {
 	}
 }
 
-func TestNativeGenerator_DifferentSeeds(t *testing.T) {
-	gen := NewNativeGenerator()
+func TestGenerator_DifferentSeeds(t *testing.T) {
+	gen := NewGenerator()
 
 	params1 := testScreamParams()
 	params1.Seed = 111
@@ -141,8 +141,8 @@ func TestNativeGenerator_DifferentSeeds(t *testing.T) {
 	}
 }
 
-func TestNativeGenerator_AllPresets(t *testing.T) {
-	gen := NewNativeGenerator()
+func TestGenerator_AllPresets(t *testing.T) {
+	gen := NewGenerator()
 
 	for _, name := range audio.AllPresets() {
 		t.Run(string(name), func(t *testing.T) {
@@ -177,8 +177,8 @@ func TestNativeGenerator_AllPresets(t *testing.T) {
 	}
 }
 
-func TestNativeGenerator_InvalidParams(t *testing.T) {
-	gen := NewNativeGenerator()
+func TestGenerator_InvalidParams(t *testing.T) {
+	gen := NewGenerator()
 
 	params := testScreamParams()
 	params.Duration = 0
@@ -189,8 +189,8 @@ func TestNativeGenerator_InvalidParams(t *testing.T) {
 	}
 }
 
-func TestNativeGenerator_MonoOutput(t *testing.T) {
-	gen := NewNativeGenerator()
+func TestGenerator_MonoOutput(t *testing.T) {
+	gen := NewGenerator()
 
 	params := testScreamParams()
 	params.Channels = 1
@@ -212,8 +212,8 @@ func TestNativeGenerator_MonoOutput(t *testing.T) {
 	}
 }
 
-func TestNativeGenerator_S16LERange(t *testing.T) {
-	gen := NewNativeGenerator()
+func TestGenerator_S16LERange(t *testing.T) {
+	gen := NewGenerator()
 	params := testScreamParams()
 
 	reader, err := gen.Generate(params)
@@ -260,15 +260,15 @@ func TestNativeGenerator_S16LERange(t *testing.T) {
 	}
 }
 
-// TestNativeGenerator_ImplementsInterface verifies NativeGenerator satisfies AudioGenerator.
-func TestNativeGenerator_ImplementsInterface(t *testing.T) {
-	var _ audio.AudioGenerator = NewNativeGenerator()
+// TestGenerator_ImplementsInterface verifies Generator satisfies audio.Generator.
+func TestGenerator_ImplementsInterface(t *testing.T) {
+	var _ audio.Generator = NewGenerator()
 }
 
 // --- Benchmarks ---
 
-func BenchmarkNativeGenerator_Classic(b *testing.B) {
-	gen := NewNativeGenerator()
+func BenchmarkGenerator_Classic(b *testing.B) {
+	gen := NewGenerator()
 	params, _ := audio.GetPreset(audio.PresetClassic)
 
 	b.ResetTimer()

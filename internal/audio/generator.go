@@ -2,7 +2,9 @@ package audio
 
 import "io"
 
-// AudioGenerator produces raw PCM audio data (s16le, 48kHz, stereo).
-type AudioGenerator interface {
+// Generator produces raw PCM audio data (s16le, 48kHz, stereo).
+type Generator interface {
 	Generate(params ScreamParams) (io.Reader, error)
 }
+
+

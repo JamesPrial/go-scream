@@ -64,8 +64,8 @@ func layerExpr(layer audio.LayerParams, noise audio.NoiseParams, globalSeed int6
 		freqRange := fmtFloat(layer.FreqRange)
 		jumpRate := fmtFloat(layer.JumpRate)
 		return fmt.Sprintf(
-			"%s*(1+%s*t)*sin(2*PI*t*(%s+%s*random(floor(t*%s)*137+%s)))",
-			amp, rise, baseFreq, freqRange, jumpRate, seedStr,
+			"%s*(1+%s*t)*sin(2*PI*t*(%s+%s*random(floor(t*%s)*%d+%s)))",
+			amp, rise, baseFreq, freqRange, jumpRate, audio.CoprimePrimaryScream, seedStr,
 		)
 
 	case audio.LayerHarmonicSweep:
@@ -78,8 +78,8 @@ func layerExpr(layer audio.LayerParams, noise audio.NoiseParams, globalSeed int6
 		freqRange := fmtFloat(layer.FreqRange)
 		jumpRate := fmtFloat(layer.JumpRate)
 		return fmt.Sprintf(
-			"%s*sin(2*PI*t*(%s+%s*t+%s*random(floor(t*%s)*251+%s)))",
-			amp, baseFreq, sweepRate, freqRange, jumpRate, seedStr,
+			"%s*sin(2*PI*t*(%s+%s*t+%s*random(floor(t*%s)*%d+%s)))",
+			amp, baseFreq, sweepRate, freqRange, jumpRate, audio.CoprimeHarmonicSweep, seedStr,
 		)
 
 	case audio.LayerHighShriek:
@@ -92,8 +92,8 @@ func layerExpr(layer audio.LayerParams, noise audio.NoiseParams, globalSeed int6
 		freqRange := fmtFloat(layer.FreqRange)
 		jumpRate := fmtFloat(layer.JumpRate)
 		return fmt.Sprintf(
-			"%s*(1+%s*t)*sin(2*PI*t*(%s+%s*random(floor(t*%s)*89+%s)))",
-			amp, rise, baseFreq, freqRange, jumpRate, seedStr,
+			"%s*(1+%s*t)*sin(2*PI*t*(%s+%s*random(floor(t*%s)*%d+%s)))",
+			amp, rise, baseFreq, freqRange, jumpRate, audio.CoprimeHighShriek, seedStr,
 		)
 
 	case audio.LayerNoiseBurst:
@@ -107,8 +107,8 @@ func layerExpr(layer audio.LayerParams, noise audio.NoiseParams, globalSeed int6
 		burstRateStr := fmtFloat(noise.BurstRate)
 		thresholdStr := fmtFloat(noise.Threshold)
 		return fmt.Sprintf(
-			"%s*gt(random(floor(t*%s)*173+%s),%s)*(2*random(t*%s)-1)",
-			burstAmpStr, burstRateStr, burstSeedStr, thresholdStr, sampleRate,
+			"%s*gt(random(floor(t*%s)*%d+%s),%s)*(2*random(t*%s)-1)",
+			burstAmpStr, burstRateStr, audio.CoprimeNoiseBurst, burstSeedStr, thresholdStr, sampleRate,
 		)
 
 	case audio.LayerBackgroundNoise:

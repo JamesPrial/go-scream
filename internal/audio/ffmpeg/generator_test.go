@@ -47,35 +47,35 @@ func testParams() audio.ScreamParams {
 
 // --- Compile-time interface check ---
 
-var _ audio.AudioGenerator = (*FFmpegGenerator)(nil)
+var _ audio.Generator = (*Generator)(nil)
 
 // --- Constructor tests ---
 
-func TestNewFFmpegGenerator_Success(t *testing.T) {
+func TestNewGenerator_Success(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v, want nil", err)
+		t.Fatalf("NewGenerator() error = %v, want nil", err)
 	}
 	if gen == nil {
-		t.Fatal("NewFFmpegGenerator() returned nil generator with nil error")
+		t.Fatal("NewGenerator() returned nil generator with nil error")
 	}
 }
 
-func TestNewFFmpegGeneratorWithPath_NotNil(t *testing.T) {
-	gen := NewFFmpegGeneratorWithPath("/usr/bin/ffmpeg")
+func TestNewGeneratorWithPath_NotNil(t *testing.T) {
+	gen := NewGeneratorWithPath("/usr/bin/ffmpeg")
 	if gen == nil {
-		t.Fatal("NewFFmpegGeneratorWithPath() returned nil")
+		t.Fatal("NewGeneratorWithPath() returned nil")
 	}
 }
 
-func TestNewFFmpegGenerator_NoFFmpegOnPath(t *testing.T) {
+func TestNewGenerator_NoFFmpegOnPath(t *testing.T) {
 	// This test verifies the error case when ffmpeg is not found.
 	// We cannot easily manipulate PATH in the test, so we rely on
 	// the explicit path constructor for that case. This test documents
 	// the expected behavior: when exec.LookPath fails,
-	// NewFFmpegGenerator returns ErrFFmpegNotFound.
+	// NewGenerator returns ErrFFmpegNotFound.
 
 	// We just verify the sentinel error exists and is usable.
 	if ErrFFmpegNotFound == nil {
@@ -88,12 +88,12 @@ func TestNewFFmpegGenerator_NoFFmpegOnPath(t *testing.T) {
 
 // --- Generate output correctness tests ---
 
-func TestFFmpegGenerator_CorrectByteCount(t *testing.T) {
+func TestGenerator_CorrectByteCount(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -114,12 +114,12 @@ func TestFFmpegGenerator_CorrectByteCount(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_NonSilent(t *testing.T) {
+func TestGenerator_NonSilent(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -145,12 +145,12 @@ func TestFFmpegGenerator_NonSilent(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_AllPresets(t *testing.T) {
+func TestGenerator_AllPresets(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	// Use different seeds to create varied params
@@ -178,12 +178,12 @@ func TestFFmpegGenerator_AllPresets(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_AllNamedPresets(t *testing.T) {
+func TestGenerator_AllNamedPresets(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	for _, name := range audio.AllPresets() {
@@ -214,12 +214,12 @@ func TestFFmpegGenerator_AllNamedPresets(t *testing.T) {
 
 // --- Generate error condition tests ---
 
-func TestFFmpegGenerator_InvalidDuration(t *testing.T) {
+func TestGenerator_InvalidDuration(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -234,12 +234,12 @@ func TestFFmpegGenerator_InvalidDuration(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_NegativeDuration(t *testing.T) {
+func TestGenerator_NegativeDuration(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -254,12 +254,12 @@ func TestFFmpegGenerator_NegativeDuration(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_InvalidSampleRate(t *testing.T) {
+func TestGenerator_InvalidSampleRate(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -274,12 +274,12 @@ func TestFFmpegGenerator_InvalidSampleRate(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_NegativeSampleRate(t *testing.T) {
+func TestGenerator_NegativeSampleRate(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -294,12 +294,12 @@ func TestFFmpegGenerator_NegativeSampleRate(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_InvalidChannels(t *testing.T) {
+func TestGenerator_InvalidChannels(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -314,12 +314,12 @@ func TestFFmpegGenerator_InvalidChannels(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_ZeroChannels(t *testing.T) {
+func TestGenerator_ZeroChannels(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -334,8 +334,8 @@ func TestFFmpegGenerator_ZeroChannels(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_BadBinaryPath(t *testing.T) {
-	gen := NewFFmpegGeneratorWithPath("/nonexistent/ffmpeg")
+func TestGenerator_BadBinaryPath(t *testing.T) {
+	gen := NewGeneratorWithPath("/nonexistent/ffmpeg")
 
 	params := testParams()
 	_, err := gen.Generate(params)
@@ -347,12 +347,12 @@ func TestFFmpegGenerator_BadBinaryPath(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_InvalidAmplitude(t *testing.T) {
+func TestGenerator_InvalidAmplitude(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -367,12 +367,12 @@ func TestFFmpegGenerator_InvalidAmplitude(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_InvalidCrusherBits(t *testing.T) {
+func TestGenerator_InvalidCrusherBits(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -387,12 +387,12 @@ func TestFFmpegGenerator_InvalidCrusherBits(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_InvalidLimiterLevel(t *testing.T) {
+func TestGenerator_InvalidLimiterLevel(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -409,12 +409,12 @@ func TestFFmpegGenerator_InvalidLimiterLevel(t *testing.T) {
 
 // --- Output format tests ---
 
-func TestFFmpegGenerator_EvenByteCount(t *testing.T) {
+func TestGenerator_EvenByteCount(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -433,12 +433,12 @@ func TestFFmpegGenerator_EvenByteCount(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_StereoAligned(t *testing.T) {
+func TestGenerator_StereoAligned(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -459,12 +459,12 @@ func TestFFmpegGenerator_StereoAligned(t *testing.T) {
 	}
 }
 
-func TestFFmpegGenerator_MonoOutput(t *testing.T) {
+func TestGenerator_MonoOutput(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -488,12 +488,12 @@ func TestFFmpegGenerator_MonoOutput(t *testing.T) {
 
 // --- Determinism tests ---
 
-func TestFFmpegGenerator_DeterministicOutput(t *testing.T) {
+func TestGenerator_DeterministicOutput(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		t.Fatalf("NewFFmpegGenerator() error = %v", err)
+		t.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()
@@ -538,15 +538,15 @@ func TestFFmpegGenerator_DeterministicOutput(t *testing.T) {
 
 // --- Benchmarks ---
 
-func BenchmarkFFmpegGenerator_1s(b *testing.B) {
+func BenchmarkGenerator_1s(b *testing.B) {
 	_, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		b.Skip("ffmpeg not available")
 	}
 
-	gen, err := NewFFmpegGenerator()
+	gen, err := NewGenerator()
 	if err != nil {
-		b.Fatalf("NewFFmpegGenerator() error = %v", err)
+		b.Fatalf("NewGenerator() error = %v", err)
 	}
 
 	params := testParams()

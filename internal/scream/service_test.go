@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
 	"strings"
 	"sync"
 	"testing"
@@ -12,13 +13,14 @@ import (
 
 	"github.com/JamesPrial/go-scream/internal/audio"
 	"github.com/JamesPrial/go-scream/internal/config"
+	"github.com/JamesPrial/go-scream/internal/discord"
 )
 
 // ---------------------------------------------------------------------------
 // Mock types
 // ---------------------------------------------------------------------------
 
-// mockGenerator implements audio.AudioGenerator for testing.
+// mockGenerator implements audio.Generator for testing.
 type mockGenerator struct {
 	mu         sync.Mutex
 	callCount  int
@@ -158,26 +160,6 @@ func (m *mockPlayer) Play(ctx context.Context, guildID, channelID string, frames
 }
 
 func (m *mockPlayer) called() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.callCount
-}
-
-// mockCloser implements io.Closer for testing.
-type mockCloser struct {
-	mu        sync.Mutex
-	callCount int
-	err       error
-}
-
-func (m *mockCloser) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.callCount++
-	return m.err
-}
-
-func (m *mockCloser) called() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.callCount
@@ -352,7 +334,7 @@ func Test_Play_Validation(t *testing.T) {
 		name      string
 		guildID   string
 		channelID string
-		player    *mockPlayer
+		player    discord.VoicePlayer
 		wantErr   error
 	}{
 		{
@@ -686,81 +668,6 @@ func Test_Generate_PlayerNotInvoked(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Close() tests
-// ---------------------------------------------------------------------------
-
-func Test_Close_WithCloser(t *testing.T) {
-	mc := &mockCloser{}
-	gen := &mockGenerator{}
-	fEnc := &mockFileEncoder{}
-	frEnc := &mockFrameEncoder{}
-	cfg := validPlayConfig()
-
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
-	svc.closer = mc
-
-	err := svc.Close()
-	if err != nil {
-		t.Fatalf("Close() unexpected error: %v", err)
-	}
-	if mc.called() != 1 {
-		t.Errorf("closer called %d times, want 1", mc.called())
-	}
-}
-
-func Test_Close_WithCloserError(t *testing.T) {
-	closeErr := errors.New("close boom")
-	mc := &mockCloser{err: closeErr}
-	gen := &mockGenerator{}
-	fEnc := &mockFileEncoder{}
-	frEnc := &mockFrameEncoder{}
-	cfg := validPlayConfig()
-
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
-	svc.closer = mc
-
-	err := svc.Close()
-	if err == nil {
-		t.Fatal("Close() expected error, got nil")
-	}
-	if !errors.Is(err, closeErr) {
-		t.Errorf("Close() error = %v, want %v", err, closeErr)
-	}
-}
-
-func Test_Close_NilCloser(t *testing.T) {
-	gen := &mockGenerator{}
-	fEnc := &mockFileEncoder{}
-	frEnc := &mockFrameEncoder{}
-	cfg := validPlayConfig()
-
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
-	// closer is nil by default.
-
-	err := svc.Close()
-	if err != nil {
-		t.Fatalf("Close() with nil closer unexpected error: %v", err)
-	}
-}
-
-func Test_Close_CalledTwice_NoPanic(t *testing.T) {
-	mc := &mockCloser{}
-	gen := &mockGenerator{}
-	fEnc := &mockFileEncoder{}
-	frEnc := &mockFrameEncoder{}
-	cfg := validPlayConfig()
-
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
-	svc.closer = mc
-
-	// Should not panic on double close.
-	_ = svc.Close()
-	err := svc.Close()
-	// Second close may return nil or an error, but must not panic.
-	_ = err
-}
-
-// ---------------------------------------------------------------------------
 // ListPresets() tests
 // ---------------------------------------------------------------------------
 
@@ -863,6 +770,151 @@ func Test_ResolveParams_EmptyPresetUsesRandomize(t *testing.T) {
 	}
 	if gotParams.Channels != 2 {
 		t.Errorf("generator params Channels = %d, want 2", gotParams.Channels)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// resolveParams: Config.Volume applied to VolumeBoostDB (Stage 6 bug fix)
+// ---------------------------------------------------------------------------
+
+func Test_ResolveParams_VolumeApplied(t *testing.T) {
+	// The "classic" preset has a known VolumeBoostDB of 9.
+	classicPreset, ok := audio.GetPreset(audio.PresetClassic)
+	if !ok {
+		t.Fatal("classic preset not found")
+	}
+	baseBoostDB := classicPreset.Filter.VolumeBoostDB
+
+	const tolerance = 0.01
+
+	tests := []struct {
+		name       string
+		volume     float64
+		wantBoost  float64
+		wantChange bool // whether VolumeBoostDB should differ from the preset
+	}{
+		{
+			name:       "default volume 1.0 leaves VolumeBoostDB unchanged",
+			volume:     1.0,
+			wantBoost:  baseBoostDB, // 20*log10(1.0) = 0
+			wantChange: false,
+		},
+		{
+			name:       "volume 0.5 reduces VolumeBoostDB by ~6 dB",
+			volume:     0.5,
+			wantBoost:  baseBoostDB + 20*math.Log10(0.5), // ~baseBoost - 6.02
+			wantChange: true,
+		},
+		{
+			name:       "volume 2.0 increases VolumeBoostDB by ~6 dB",
+			volume:     2.0,
+			wantBoost:  baseBoostDB + 20*math.Log10(2.0), // ~baseBoost + 6.02
+			wantChange: true,
+		},
+		{
+			name:       "volume 0.1 reduces VolumeBoostDB by 20 dB",
+			volume:     0.1,
+			wantBoost:  baseBoostDB + 20*math.Log10(0.1), // ~baseBoost - 20
+			wantChange: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gen := &mockGenerator{}
+			fEnc := &mockFileEncoder{}
+			frEnc := &mockFrameEncoder{}
+			pl := &mockPlayer{}
+			cfg := validPlayConfig()
+			cfg.Preset = "classic"
+			cfg.Volume = tt.volume
+
+			svc := newTestService(cfg, gen, fEnc, frEnc, pl)
+
+			err := svc.Play(context.Background(), "guild-123", "chan-456")
+			if err != nil {
+				t.Fatalf("Play() unexpected error: %v", err)
+			}
+
+			gotBoost := gen.params().Filter.VolumeBoostDB
+
+			if math.Abs(gotBoost-tt.wantBoost) > tolerance {
+				t.Errorf("VolumeBoostDB = %f, want %f (within %f)", gotBoost, tt.wantBoost, tolerance)
+			}
+
+			if !tt.wantChange && gotBoost != baseBoostDB {
+				t.Errorf("VolumeBoostDB = %f, want unchanged preset value %f", gotBoost, baseBoostDB)
+			}
+			if tt.wantChange && gotBoost == baseBoostDB {
+				t.Errorf("VolumeBoostDB = %f, should differ from preset value %f for volume %f", gotBoost, baseBoostDB, tt.volume)
+			}
+		})
+	}
+}
+
+func Test_ResolveParams_VolumeApplied_Generate(t *testing.T) {
+	// Verify volume is also applied via the Generate path, not just Play.
+	classicPreset, ok := audio.GetPreset(audio.PresetClassic)
+	if !ok {
+		t.Fatal("classic preset not found")
+	}
+	baseBoostDB := classicPreset.Filter.VolumeBoostDB
+
+	gen := &mockGenerator{}
+	fEnc := &mockFileEncoder{}
+	frEnc := &mockFrameEncoder{}
+	cfg := validGenerateConfig()
+	cfg.Preset = "classic"
+	cfg.Volume = 0.5
+
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+
+	var buf bytes.Buffer
+	err := svc.Generate(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Generate() unexpected error: %v", err)
+	}
+
+	gotBoost := gen.params().Filter.VolumeBoostDB
+	wantBoost := baseBoostDB + 20*math.Log10(0.5)
+	const tolerance = 0.01
+
+	if math.Abs(gotBoost-wantBoost) > tolerance {
+		t.Errorf("Generate: VolumeBoostDB = %f, want %f (within %f)", gotBoost, wantBoost, tolerance)
+	}
+}
+
+func Test_ResolveParams_VolumeZero_NoChange(t *testing.T) {
+	// Volume of 0.0 should NOT apply a volume offset (guard against log10(0) = -Inf).
+	// The implementation guards with cfg.Volume > 0, so 0.0 is a no-op.
+	classicPreset, ok := audio.GetPreset(audio.PresetClassic)
+	if !ok {
+		t.Fatal("classic preset not found")
+	}
+	baseBoostDB := classicPreset.Filter.VolumeBoostDB
+
+	gen := &mockGenerator{}
+	fEnc := &mockFileEncoder{}
+	frEnc := &mockFrameEncoder{}
+	pl := &mockPlayer{}
+	cfg := validPlayConfig()
+	cfg.Preset = "classic"
+	cfg.Volume = 0.0
+
+	svc := newTestService(cfg, gen, fEnc, frEnc, pl)
+
+	err := svc.Play(context.Background(), "guild-123", "chan-456")
+	if err != nil {
+		t.Fatalf("Play() unexpected error: %v", err)
+	}
+
+	gotBoost := gen.params().Filter.VolumeBoostDB
+	if gotBoost != baseBoostDB {
+		t.Errorf("VolumeBoostDB = %f with Volume=0.0, want unchanged preset value %f", gotBoost, baseBoostDB)
+	}
+	// Ensure no -Inf or NaN leaked through.
+	if math.IsInf(gotBoost, 0) || math.IsNaN(gotBoost) {
+		t.Errorf("VolumeBoostDB is Inf or NaN: %f", gotBoost)
 	}
 }
 

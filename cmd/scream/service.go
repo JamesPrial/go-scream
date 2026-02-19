@@ -1,14 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/bwmarrin/discordgo"
-
-	"github.com/JamesPrial/go-scream/internal/audio"
-	"github.com/JamesPrial/go-scream/internal/audio/ffmpeg"
-	"github.com/JamesPrial/go-scream/internal/audio/native"
+	"github.com/JamesPrial/go-scream/internal/app"
 	"github.com/JamesPrial/go-scream/internal/config"
 	"github.com/JamesPrial/go-scream/internal/discord"
 	"github.com/JamesPrial/go-scream/internal/encoding"
@@ -19,45 +19,44 @@ import (
 // (the Discord session) from the provided configuration. The caller must
 // close the returned closer when done.
 func newServiceFromConfig(cfg config.Config) (*scream.Service, io.Closer, error) {
-	// Select audio generator based on backend.
-	var gen audio.AudioGenerator
-	if cfg.Backend == config.BackendFFmpeg {
-		g, err := ffmpeg.NewFFmpegGenerator()
-		if err != nil {
-			return nil, nil, err
-		}
-		gen = g
-	} else {
-		gen = native.NewNativeGenerator()
+	gen, err := app.NewGenerator(string(cfg.Backend))
+	if err != nil {
+		return nil, nil, err
 	}
 
-	// Create Opus frame encoder.
 	frameEnc := encoding.NewGopusFrameEncoder()
+	fileEnc := app.NewFileEncoder(string(cfg.Format))
 
-	// Create file encoder based on format.
-	var fileEnc encoding.FileEncoder
-	if cfg.Format == config.FormatWAV {
-		fileEnc = encoding.NewWAVEncoder()
-	} else {
-		fileEnc = encoding.NewOGGEncoder()
-	}
-
-	// Create Discord player if token is available.
 	var player discord.VoicePlayer
 	var closer io.Closer
 	if cfg.Token != "" {
-		session, err := discordgo.New("Bot " + cfg.Token)
+		player, closer, err = app.NewDiscordDeps(cfg.Token)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create discord session: %w", err)
+			return nil, nil, err
 		}
-		if err := session.Open(); err != nil {
-			return nil, nil, fmt.Errorf("failed to open discord session: %w", err)
-		}
-		closer = session
-		sess := &discord.DiscordGoSession{S: session}
-		player = discord.NewDiscordPlayer(sess)
 	}
 
 	svc := scream.NewServiceWithDeps(cfg, gen, fileEnc, frameEnc, player)
 	return svc, closer, nil
+}
+
+// runWithService creates a signal-notifying context, builds the service from
+// cfg, defers closing the session with a stderr warning on error, then
+// delegates to fn.
+func runWithService(cfg config.Config, fn func(ctx context.Context, svc *scream.Service) error) error {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	svc, closer, err := newServiceFromConfig(cfg)
+	if err != nil {
+		return err
+	}
+	if closer != nil {
+		defer func() {
+			if cerr := closer.Close(); cerr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close session: %v\n", cerr)
+			}
+		}()
+	}
+	return fn(ctx, svc)
 }

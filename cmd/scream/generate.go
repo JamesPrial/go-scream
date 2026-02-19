@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/spf13/cobra"
 
 	"github.com/JamesPrial/go-scream/internal/config"
+	"github.com/JamesPrial/go-scream/internal/scream"
 )
 
 var generateCmd = &cobra.Command{
@@ -40,28 +39,16 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Generating scream to %s (format: %s)\n", cfg.OutputFile, cfg.Format)
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	svc, closer, err := newServiceFromConfig(cfg)
-	if err != nil {
-		return err
-	}
-	if closer != nil {
+	return runWithService(cfg, func(ctx context.Context, svc *scream.Service) error {
+		f, err := os.Create(cfg.OutputFile)
+		if err != nil {
+			return fmt.Errorf("failed to create output file: %w", err)
+		}
 		defer func() {
-			if cerr := closer.Close(); cerr != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to close session: %v\n", cerr)
+			if cerr := f.Close(); cerr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close output file: %v\n", cerr)
 			}
 		}()
-	}
-	f, err := os.Create(cfg.OutputFile)
-	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer func() {
-		if cerr := f.Close(); cerr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to close output file: %v\n", cerr)
-		}
-	}()
-	return svc.Generate(ctx, f)
+		return svc.Generate(ctx, f)
+	})
 }

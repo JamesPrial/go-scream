@@ -9,33 +9,33 @@ import (
 	"github.com/JamesPrial/go-scream/internal/audio"
 )
 
-// Compile-time check that FFmpegGenerator implements audio.AudioGenerator.
-var _ audio.AudioGenerator = (*FFmpegGenerator)(nil)
+// Compile-time check that Generator implements audio.Generator.
+var _ audio.Generator = (*Generator)(nil)
 
-// FFmpegGenerator produces raw PCM audio by invoking the ffmpeg executable.
-type FFmpegGenerator struct {
+// Generator produces raw PCM audio by invoking the ffmpeg executable.
+type Generator struct {
 	ffmpegPath string
 }
 
-// NewFFmpegGenerator locates the ffmpeg binary on PATH and returns a generator.
+// NewGenerator locates the ffmpeg binary on PATH and returns a generator.
 // Returns ErrFFmpegNotFound if ffmpeg is not available.
-func NewFFmpegGenerator() (*FFmpegGenerator, error) {
+func NewGenerator() (*Generator, error) {
 	path, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrFFmpegNotFound, err)
 	}
-	return &FFmpegGenerator{ffmpegPath: path}, nil
+	return &Generator{ffmpegPath: path}, nil
 }
 
-// NewFFmpegGeneratorWithPath returns a generator using the given ffmpeg binary path.
+// NewGeneratorWithPath returns a generator using the given ffmpeg binary path.
 // No validation is performed on the path.
-func NewFFmpegGeneratorWithPath(path string) *FFmpegGenerator {
-	return &FFmpegGenerator{ffmpegPath: path}
+func NewGeneratorWithPath(path string) *Generator {
+	return &Generator{ffmpegPath: path}
 }
 
 // Generate validates params, invokes ffmpeg, and returns the raw PCM audio as an io.Reader.
 // Returns an error wrapping ErrFFmpegFailed if the process exits with a non-zero status.
-func (g *FFmpegGenerator) Generate(params audio.ScreamParams) (io.Reader, error) {
+func (g *Generator) Generate(params audio.ScreamParams) (io.Reader, error) {
 	if err := params.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid params: %w", err)
 	}

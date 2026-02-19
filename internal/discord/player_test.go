@@ -143,11 +143,11 @@ func makeFrames(n int) <-chan []byte {
 	return ch
 }
 
-// setupPlayer creates a DiscordPlayer with a mock session and voice connection.
-func setupPlayer() (*DiscordPlayer, *mockSession, *mockVoiceConn) {
+// setupPlayer creates a Player with a mock session and voice connection.
+func setupPlayer() (*Player, *mockSession, *mockVoiceConn) {
 	vc := newMockVoiceConn()
 	sess := &mockSession{voiceConn: vc}
-	player := NewDiscordPlayer(sess)
+	player := NewPlayer(sess)
 	return player, sess, vc
 }
 
@@ -155,17 +155,17 @@ func setupPlayer() (*DiscordPlayer, *mockSession, *mockVoiceConn) {
 // Compile-time interface check
 // ---------------------------------------------------------------------------
 
-var _ VoicePlayer = (*DiscordPlayer)(nil)
+var _ VoicePlayer = (*Player)(nil)
 
 // ---------------------------------------------------------------------------
 // Constructor
 // ---------------------------------------------------------------------------
 
-func TestNewDiscordPlayer_NotNil(t *testing.T) {
+func TestNewPlayer_NotNil(t *testing.T) {
 	sess := &mockSession{}
-	player := NewDiscordPlayer(sess)
+	player := NewPlayer(sess)
 	if player == nil {
-		t.Fatal("NewDiscordPlayer() returned nil")
+		t.Fatal("NewPlayer() returned nil")
 	}
 }
 
@@ -190,7 +190,7 @@ func TestSilenceFrameCount_Value(t *testing.T) {
 // Normal playback
 // ---------------------------------------------------------------------------
 
-func TestDiscordPlayer_Play_10Frames(t *testing.T) {
+func TestPlayer_Play_10Frames(t *testing.T) {
 	player, _, vc := setupPlayer()
 	frames := makeFrames(10)
 
@@ -241,7 +241,7 @@ func TestDiscordPlayer_Play_10Frames(t *testing.T) {
 	}
 }
 
-func TestDiscordPlayer_Play_EmptyChannel(t *testing.T) {
+func TestPlayer_Play_EmptyChannel(t *testing.T) {
 	player, _, vc := setupPlayer()
 	ch := make(chan []byte)
 	close(ch) // closed immediately, 0 data frames
@@ -282,7 +282,7 @@ func TestDiscordPlayer_Play_EmptyChannel(t *testing.T) {
 	}
 }
 
-func TestDiscordPlayer_Play_1Frame(t *testing.T) {
+func TestPlayer_Play_1Frame(t *testing.T) {
 	player, _, vc := setupPlayer()
 	frames := makeFrames(1)
 
@@ -321,7 +321,7 @@ func TestDiscordPlayer_Play_1Frame(t *testing.T) {
 // Speaking protocol
 // ---------------------------------------------------------------------------
 
-func TestDiscordPlayer_Play_SpeakingProtocol(t *testing.T) {
+func TestPlayer_Play_SpeakingProtocol(t *testing.T) {
 	player, _, vc := setupPlayer()
 	frames := makeFrames(3)
 
@@ -351,7 +351,7 @@ func TestDiscordPlayer_Play_SpeakingProtocol(t *testing.T) {
 // Silence frames
 // ---------------------------------------------------------------------------
 
-func TestDiscordPlayer_Play_SilenceFrames(t *testing.T) {
+func TestPlayer_Play_SilenceFrames(t *testing.T) {
 	player, _, vc := setupPlayer()
 	frames := makeFrames(2)
 
@@ -385,7 +385,7 @@ func TestDiscordPlayer_Play_SilenceFrames(t *testing.T) {
 // Disconnect
 // ---------------------------------------------------------------------------
 
-func TestDiscordPlayer_Play_DisconnectCalled(t *testing.T) {
+func TestPlayer_Play_DisconnectCalled(t *testing.T) {
 	player, _, vc := setupPlayer()
 	frames := makeFrames(1)
 
@@ -402,13 +402,13 @@ func TestDiscordPlayer_Play_DisconnectCalled(t *testing.T) {
 	}
 }
 
-func TestDiscordPlayer_Play_DisconnectOnError(t *testing.T) {
+func TestPlayer_Play_DisconnectOnError(t *testing.T) {
 	// Speaking(true) fails, but Disconnect should still be called
 	// because join succeeded and defer should fire.
 	vc := newMockVoiceConn()
 	vc.speakingErr = errors.New("mock speaking error")
 	sess := &mockSession{voiceConn: vc}
-	player := NewDiscordPlayer(sess)
+	player := NewPlayer(sess)
 
 	frames := makeFrames(1)
 	err := player.Play(context.Background(), "g1", "c1", frames)
@@ -428,7 +428,7 @@ func TestDiscordPlayer_Play_DisconnectOnError(t *testing.T) {
 // Join parameters
 // ---------------------------------------------------------------------------
 
-func TestDiscordPlayer_Play_JoinParams(t *testing.T) {
+func TestPlayer_Play_JoinParams(t *testing.T) {
 	player, sess, vc := setupPlayer()
 	frames := makeFrames(1)
 
@@ -463,7 +463,7 @@ func TestDiscordPlayer_Play_JoinParams(t *testing.T) {
 // Error conditions
 // ---------------------------------------------------------------------------
 
-func TestDiscordPlayer_Play_EmptyGuildID(t *testing.T) {
+func TestPlayer_Play_EmptyGuildID(t *testing.T) {
 	player, _, _ := setupPlayer()
 	frames := makeFrames(1)
 
@@ -473,7 +473,7 @@ func TestDiscordPlayer_Play_EmptyGuildID(t *testing.T) {
 	}
 }
 
-func TestDiscordPlayer_Play_EmptyChannelID(t *testing.T) {
+func TestPlayer_Play_EmptyChannelID(t *testing.T) {
 	player, _, _ := setupPlayer()
 	frames := makeFrames(1)
 
@@ -483,7 +483,7 @@ func TestDiscordPlayer_Play_EmptyChannelID(t *testing.T) {
 	}
 }
 
-func TestDiscordPlayer_Play_NilFrames(t *testing.T) {
+func TestPlayer_Play_NilFrames(t *testing.T) {
 	player, _, _ := setupPlayer()
 
 	err := player.Play(context.Background(), "g1", "c1", nil)
@@ -492,9 +492,9 @@ func TestDiscordPlayer_Play_NilFrames(t *testing.T) {
 	}
 }
 
-func TestDiscordPlayer_Play_JoinFails(t *testing.T) {
+func TestPlayer_Play_JoinFails(t *testing.T) {
 	sess := &mockSession{joinErr: errors.New("underlying join failure")}
-	player := NewDiscordPlayer(sess)
+	player := NewPlayer(sess)
 	frames := makeFrames(1)
 
 	err := player.Play(context.Background(), "g1", "c1", frames)
@@ -503,11 +503,11 @@ func TestDiscordPlayer_Play_JoinFails(t *testing.T) {
 	}
 }
 
-func TestDiscordPlayer_Play_SpeakingTrueFails(t *testing.T) {
+func TestPlayer_Play_SpeakingTrueFails(t *testing.T) {
 	vc := newMockVoiceConn()
 	vc.speakingErr = errors.New("speaking failure")
 	sess := &mockSession{voiceConn: vc}
-	player := NewDiscordPlayer(sess)
+	player := NewPlayer(sess)
 	frames := makeFrames(1)
 
 	err := player.Play(context.Background(), "g1", "c1", frames)
@@ -516,7 +516,7 @@ func TestDiscordPlayer_Play_SpeakingTrueFails(t *testing.T) {
 	}
 }
 
-func TestDiscordPlayer_Play_CancelledContext(t *testing.T) {
+func TestPlayer_Play_CancelledContext(t *testing.T) {
 	player, _, _ := setupPlayer()
 	frames := makeFrames(1)
 
@@ -533,10 +533,10 @@ func TestDiscordPlayer_Play_CancelledContext(t *testing.T) {
 // Context cancellation mid-playback
 // ---------------------------------------------------------------------------
 
-func TestDiscordPlayer_Play_CancelMidPlayback(t *testing.T) {
+func TestPlayer_Play_CancelMidPlayback(t *testing.T) {
 	vc := newMockVoiceConn()
 	sess := &mockSession{voiceConn: vc}
-	player := NewDiscordPlayer(sess)
+	player := NewPlayer(sess)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -572,7 +572,7 @@ func TestDiscordPlayer_Play_CancelMidPlayback(t *testing.T) {
 // Error validation table-driven (combined)
 // ---------------------------------------------------------------------------
 
-func TestDiscordPlayer_Play_ValidationErrors(t *testing.T) {
+func TestPlayer_Play_ValidationErrors(t *testing.T) {
 	validFrames := makeFrames(1)
 
 	tests := []struct {
@@ -621,11 +621,11 @@ func TestDiscordPlayer_Play_ValidationErrors(t *testing.T) {
 // Benchmarks
 // ---------------------------------------------------------------------------
 
-func BenchmarkDiscordPlayer_Play_150Frames(b *testing.B) {
+func BenchmarkPlayer_Play_150Frames(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		vc := newMockVoiceConn()
 		sess := &mockSession{voiceConn: vc}
-		player := NewDiscordPlayer(sess)
+		player := NewPlayer(sess)
 
 		ch := make(chan []byte, 150)
 		for j := 0; j < 150; j++ {
