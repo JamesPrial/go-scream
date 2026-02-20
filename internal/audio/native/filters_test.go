@@ -10,7 +10,7 @@ import (
 // --- HighpassFilter Tests ---
 
 func TestHighpassFilter_RemovesDC(t *testing.T) {
-	hp := NewHighpassFilter(100, 48000)
+	hp := newHighpassFilter(100, 48000)
 
 	// Feed constant 1.0 (DC) for 1000 samples. Output should decay toward 0.
 	var last float64
@@ -24,7 +24,7 @@ func TestHighpassFilter_RemovesDC(t *testing.T) {
 }
 
 func TestHighpassFilter_PassesHighFreq(t *testing.T) {
-	hp := NewHighpassFilter(100, 48000)
+	hp := newHighpassFilter(100, 48000)
 
 	// Alternating +1/-1 represents a high-frequency signal (Nyquist/2 = 24kHz).
 	// Warm up the filter first.
@@ -60,7 +60,7 @@ func TestHighpassFilter_PassesHighFreq(t *testing.T) {
 // --- LowpassFilter Tests ---
 
 func TestLowpassFilter_PassesDC(t *testing.T) {
-	lp := NewLowpassFilter(8000, 48000)
+	lp := newLowpassFilter(8000, 48000)
 
 	// Constant 1.0 (DC) should converge to 1.0 after warmup.
 	var last float64
@@ -74,7 +74,7 @@ func TestLowpassFilter_PassesDC(t *testing.T) {
 }
 
 func TestLowpassFilter_AttenuatesHighFreq(t *testing.T) {
-	lp := NewLowpassFilter(1000, 48000)
+	lp := newLowpassFilter(1000, 48000)
 
 	// Warm up with alternating signal
 	for i := 0; i < 200; i++ {
@@ -109,7 +109,7 @@ func TestLowpassFilter_AttenuatesHighFreq(t *testing.T) {
 // --- Bitcrusher Tests ---
 
 func TestBitcrusher_FullMix(t *testing.T) {
-	bc := NewBitcrusher(4, 1.0)
+	bc := newBitcrusher(4, 1.0)
 
 	// With 4 bits, signal is quantized to 2^4 = 16 levels.
 	// A value like 0.123456 should snap to the nearest quantization step.
@@ -139,7 +139,7 @@ func TestBitcrusher_FullMix(t *testing.T) {
 }
 
 func TestBitcrusher_ZeroMix(t *testing.T) {
-	bc := NewBitcrusher(4, 0.0)
+	bc := newBitcrusher(4, 0.0)
 
 	// With mix=0, output should equal input exactly (dry signal only)
 	tests := []float64{0.0, 0.5, -0.5, 0.999, -0.999}
@@ -153,13 +153,13 @@ func TestBitcrusher_ZeroMix(t *testing.T) {
 
 func TestBitcrusher_Blend(t *testing.T) {
 	// mix=0.5 should blend 50% clean with 50% crushed
-	bc := NewBitcrusher(4, 0.5)
+	bc := newBitcrusher(4, 0.5)
 
 	in := 0.3
 	out := bc.Process(in)
 
 	// Output should be between the clean signal and the fully crushed signal
-	bcFull := NewBitcrusher(4, 1.0)
+	bcFull := newBitcrusher(4, 1.0)
 	crushed := bcFull.Process(in)
 
 	expected := 0.5*in + 0.5*crushed
@@ -173,7 +173,7 @@ func TestBitcrusher_Blend(t *testing.T) {
 
 func TestCompressor_BelowThreshold(t *testing.T) {
 	// Threshold at -20dB ~ amplitude 0.1. Signal at 0.01 is well below.
-	comp := NewCompressor(8, -20, 5, 50, 48000)
+	comp := newCompressor(8, -20, 5, 50, 48000)
 
 	// Feed quiet signal and let compressor settle
 	for i := 0; i < 1000; i++ {
@@ -189,7 +189,7 @@ func TestCompressor_BelowThreshold(t *testing.T) {
 
 func TestCompressor_AboveThreshold(t *testing.T) {
 	// Threshold at -6dB ~ amplitude 0.5. Signal at 0.9 is above.
-	comp := NewCompressor(8, -6, 5, 50, 48000)
+	comp := newCompressor(8, -6, 5, 50, 48000)
 
 	// Feed loud signal to let compressor engage
 	var out float64
@@ -208,7 +208,7 @@ func TestCompressor_AboveThreshold(t *testing.T) {
 }
 
 func TestCompressor_PreservesSign(t *testing.T) {
-	comp := NewCompressor(8, -20, 5, 50, 48000)
+	comp := newCompressor(8, -20, 5, 50, 48000)
 
 	// Feed negative signal
 	for i := 0; i < 1000; i++ {
@@ -224,7 +224,7 @@ func TestCompressor_PreservesSign(t *testing.T) {
 // --- VolumeBoost Tests ---
 
 func TestVolumeBoost_ZeroDB(t *testing.T) {
-	vb := NewVolumeBoost(0)
+	vb := newVolumeBoost(0)
 
 	tests := []float64{0.0, 0.5, -0.5, 1.0, -1.0}
 	for _, in := range tests {
@@ -236,7 +236,7 @@ func TestVolumeBoost_ZeroDB(t *testing.T) {
 }
 
 func TestVolumeBoost_6dB(t *testing.T) {
-	vb := NewVolumeBoost(6)
+	vb := newVolumeBoost(6)
 
 	in := 0.5
 	out := vb.Process(in)
@@ -250,7 +250,7 @@ func TestVolumeBoost_6dB(t *testing.T) {
 }
 
 func TestVolumeBoost_NegativeDB(t *testing.T) {
-	vb := NewVolumeBoost(-6)
+	vb := newVolumeBoost(-6)
 
 	in := 1.0
 	out := vb.Process(in)
@@ -267,7 +267,7 @@ func TestVolumeBoost_NegativeDB(t *testing.T) {
 // --- Limiter Tests ---
 
 func TestLimiter_WithinRange(t *testing.T) {
-	lim := NewLimiter(0.95)
+	lim := newLimiter(0.95)
 
 	out := lim.Process(0.5)
 	if out != 0.5 {
@@ -276,7 +276,7 @@ func TestLimiter_WithinRange(t *testing.T) {
 }
 
 func TestLimiter_ClipsPositive(t *testing.T) {
-	lim := NewLimiter(0.95)
+	lim := newLimiter(0.95)
 
 	out := lim.Process(1.5)
 	if out != 0.95 {
@@ -285,7 +285,7 @@ func TestLimiter_ClipsPositive(t *testing.T) {
 }
 
 func TestLimiter_ClipsNegative(t *testing.T) {
-	lim := NewLimiter(0.95)
+	lim := newLimiter(0.95)
 
 	out := lim.Process(-1.5)
 	if out != -0.95 {
@@ -300,11 +300,11 @@ func TestFilterChain_OrderMatters(t *testing.T) {
 	// should produce different results for a signal that gets boosted above the limit.
 
 	// Chain 1: Boost then Limit
-	chain1 := NewFilterChain(NewVolumeBoost(12), NewLimiter(0.95))
+	chain1 := newFilterChain(newVolumeBoost(12), newLimiter(0.95))
 	out1 := chain1.Process(0.5)
 
 	// Chain 2: Limit then Boost
-	chain2 := NewFilterChain(NewLimiter(0.95), NewVolumeBoost(12))
+	chain2 := newFilterChain(newLimiter(0.95), newVolumeBoost(12))
 	out2 := chain2.Process(0.5)
 
 	// In chain1, 0.5 gets boosted to ~2.0, then limited to 0.95
@@ -331,13 +331,13 @@ func TestFilterChainFromParams_ClassicPreset(t *testing.T) {
 		t.Fatal("classic preset not found")
 	}
 
-	chain := NewFilterChainFromParams(classic.Filter, classic.SampleRate)
+	chain := newFilterChainFromParams(classic.Filter, classic.SampleRate)
 
 	// Feed a sine-like signal through the chain. All output should be bounded
 	// by the limiter level.
-	osc := NewOscillator(classic.SampleRate)
+	osc := newOscillator(classic.SampleRate)
 	for i := 0; i < classic.SampleRate; i++ {
-		in := osc.Sin(500) // 500Hz sine
+		in := osc.sin(500) // 500Hz sine
 		out := chain.Process(in)
 
 		if math.Abs(out) > classic.Filter.LimiterLevel+1e-10 {
@@ -350,31 +350,31 @@ func TestFilterChainFromParams_ClassicPreset(t *testing.T) {
 // --- Filter Interface Compliance ---
 
 func TestHighpassFilter_ImplementsFilter(t *testing.T) {
-	var _ Filter = NewHighpassFilter(100, 48000)
+	var _ filter = newHighpassFilter(100, 48000)
 }
 
 func TestLowpassFilter_ImplementsFilter(t *testing.T) {
-	var _ Filter = NewLowpassFilter(8000, 48000)
+	var _ filter = newLowpassFilter(8000, 48000)
 }
 
 func TestBitcrusher_ImplementsFilter(t *testing.T) {
-	var _ Filter = NewBitcrusher(8, 0.5)
+	var _ filter = newBitcrusher(8, 0.5)
 }
 
 func TestCompressor_ImplementsFilter(t *testing.T) {
-	var _ Filter = NewCompressor(8, -20, 5, 50, 48000)
+	var _ filter = newCompressor(8, -20, 5, 50, 48000)
 }
 
 func TestVolumeBoost_ImplementsFilter(t *testing.T) {
-	var _ Filter = NewVolumeBoost(6)
+	var _ filter = newVolumeBoost(6)
 }
 
 func TestLimiter_ImplementsFilter(t *testing.T) {
-	var _ Filter = NewLimiter(0.95)
+	var _ filter = newLimiter(0.95)
 }
 
 func TestFilterChain_ImplementsFilter(t *testing.T) {
-	var _ Filter = NewFilterChain()
+	var _ filter = newFilterChain()
 }
 
 // --- Benchmarks ---
@@ -384,11 +384,11 @@ func BenchmarkFilterChain_Classic(b *testing.B) {
 	if !ok {
 		b.Fatal("classic preset not found")
 	}
-	chain := NewFilterChainFromParams(classic.Filter, classic.SampleRate)
-	osc := NewOscillator(classic.SampleRate)
+	chain := newFilterChainFromParams(classic.Filter, classic.SampleRate)
+	osc := newOscillator(classic.SampleRate)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		chain.Process(osc.Sin(500))
+		chain.Process(osc.sin(500))
 	}
 }

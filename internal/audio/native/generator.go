@@ -54,10 +54,10 @@ func (g *Generator) Generate(params audio.ScreamParams) (io.Reader, error) {
 	layers := buildLayers(params, sampleRate)
 
 	// Create the mixer from all layers.
-	mixer := NewLayerMixer(layers...)
+	mixer := newLayerMixer(layers...)
 
 	// Create the filter chain from params.
-	filterChain := NewFilterChainFromParams(params.Filter, sampleRate)
+	chain := newFilterChainFromParams(params.Filter, sampleRate)
 
 	// Allocate output buffer: totalSamples * channels * 2 bytes per sample.
 	out := make([]byte, totalSamples*channels*2)
@@ -70,7 +70,7 @@ func (g *Generator) Generate(params audio.ScreamParams) (io.Reader, error) {
 		raw := mixer.Sample(t)
 
 		// Apply the filter chain.
-		filtered := filterChain.Process(raw)
+		filtered := chain.Process(raw)
 
 		// Convert to int16 by scaling and clamping.
 		scaled := filtered * 32767.0
@@ -94,7 +94,7 @@ func (g *Generator) Generate(params audio.ScreamParams) (io.Reader, error) {
 // buildLayers creates all 5 synthesis layers from ScreamParams.
 // The global params.Seed is mixed into each layer's seed so that different
 // top-level seeds produce different audio even when LayerParams seeds are identical.
-func buildLayers(params audio.ScreamParams, sampleRate int) []Layer {
+func buildLayers(params audio.ScreamParams, sampleRate int) []layer {
 	lp := params.Layers
 	noise := params.Noise
 	globalSeed := params.Seed
@@ -116,12 +116,12 @@ func buildLayers(params audio.ScreamParams, sampleRate int) []Layer {
 	noiseWithSeed := noise
 	noiseWithSeed.BurstSeed = noise.BurstSeed ^ (globalSeed * seedMixNoise)
 
-	layers := []Layer{
-		NewPrimaryScreamLayer(p0, sampleRate),
-		NewHarmonicSweepLayer(p1, sampleRate),
-		NewHighShriekLayer(p2, sampleRate),
-		NewNoiseBurstLayer(p3, noiseWithSeed),
-		NewBackgroundNoiseLayer(noiseWithSeed),
+	layers := []layer{
+		newPrimaryScreamLayer(p0, sampleRate),
+		newHarmonicSweepLayer(p1, sampleRate),
+		newHighShriekLayer(p2, sampleRate),
+		newNoiseBurstLayer(p3, noiseWithSeed),
+		newBackgroundNoiseLayer(noiseWithSeed),
 	}
 
 	return layers

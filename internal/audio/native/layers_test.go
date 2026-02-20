@@ -67,7 +67,7 @@ func validNoiseParams() audio.NoiseParams {
 // --- SweepJumpLayer Tests (PrimaryScream constructor) ---
 
 func TestSweepJumpLayer_PrimaryScream_NonZeroOutput(t *testing.T) {
-	layer := NewPrimaryScreamLayer(validPrimaryScreamParams(), testSampleRate)
+	layer := newPrimaryScreamLayer(validPrimaryScreamParams(), testSampleRate)
 
 	hasNonZero := false
 	for i := 0; i < 1000; i++ {
@@ -85,7 +85,7 @@ func TestSweepJumpLayer_PrimaryScream_NonZeroOutput(t *testing.T) {
 
 func TestSweepJumpLayer_PrimaryScream_AmplitudeBounds(t *testing.T) {
 	p := validPrimaryScreamParams()
-	layer := NewPrimaryScreamLayer(p, testSampleRate)
+	layer := newPrimaryScreamLayer(p, testSampleRate)
 
 	// For t in [0, 3], envelope = amp * (1 + rise*t)
 	// Max envelope at t=3: 0.4 * (1 + 1.2*3) = 0.4 * 4.6 = 1.84
@@ -107,7 +107,7 @@ func TestSweepJumpLayer_PrimaryScream_AmplitudeBounds(t *testing.T) {
 // --- HarmonicSweepLayer Tests ---
 
 func TestHarmonicSweepLayer_NonZeroOutput(t *testing.T) {
-	layer := NewHarmonicSweepLayer(validHarmonicSweepParams(), testSampleRate)
+	layer := newHarmonicSweepLayer(validHarmonicSweepParams(), testSampleRate)
 
 	hasNonZero := false
 	for i := 0; i < 1000; i++ {
@@ -126,7 +126,7 @@ func TestHarmonicSweepLayer_NonZeroOutput(t *testing.T) {
 // --- SweepJumpLayer Tests (HighShriek constructor) ---
 
 func TestSweepJumpLayer_HighShriek_NonZeroOutput(t *testing.T) {
-	layer := NewHighShriekLayer(validHighShriekParams(), testSampleRate)
+	layer := newHighShriekLayer(validHighShriekParams(), testSampleRate)
 
 	hasNonZero := false
 	for i := 0; i < 1000; i++ {
@@ -143,7 +143,7 @@ func TestSweepJumpLayer_HighShriek_NonZeroOutput(t *testing.T) {
 }
 
 func TestSweepJumpLayer_HighShriek_EnvelopeRises(t *testing.T) {
-	layer := NewHighShriekLayer(validHighShriekParams(), testSampleRate)
+	layer := newHighShriekLayer(validHighShriekParams(), testSampleRate)
 
 	// Collect average absolute amplitude over two different time windows.
 	// Early window: t in [0.0, 0.5)
@@ -157,7 +157,7 @@ func TestSweepJumpLayer_HighShriek_EnvelopeRises(t *testing.T) {
 
 		// We need a fresh layer for each window since the oscillator is stateful.
 		// Instead, we'll generate all samples up to the end and measure the windows.
-		l := NewHighShriekLayer(validHighShriekParams(), testSampleRate)
+		l := newHighShriekLayer(validHighShriekParams(), testSampleRate)
 		for i := 0; i < endSample; i++ {
 			tSec := float64(i) / float64(testSampleRate)
 			s := l.Sample(tSec)
@@ -185,7 +185,7 @@ func TestSweepJumpLayer_HighShriek_EnvelopeRises(t *testing.T) {
 func TestNoiseBurstLayer_HasSilentAndActiveSegments(t *testing.T) {
 	np := validNoiseParams()
 	lp := validNoiseBurstParams()
-	layer := NewNoiseBurstLayer(lp, np)
+	layer := newNoiseBurstLayer(lp, np)
 
 	hasZero := false
 	hasNonZero := false
@@ -217,7 +217,7 @@ func TestNoiseBurstLayer_HasSilentAndActiveSegments(t *testing.T) {
 
 func TestBackgroundNoiseLayer_ContinuousOutput(t *testing.T) {
 	np := validNoiseParams()
-	layer := NewBackgroundNoiseLayer(np)
+	layer := newBackgroundNoiseLayer(np)
 
 	// Background noise should be (almost) always non-zero.
 	// With pseudo-random values, exact zero is extremely unlikely.
@@ -254,7 +254,7 @@ func TestLayerMixer_SumsLayers(t *testing.T) {
 	l2 := &mockLayer{value: 0.2}
 	l3 := &mockLayer{value: 0.1}
 
-	mixer := NewLayerMixer(l1, l2, l3)
+	mixer := newLayerMixer(l1, l2, l3)
 	got := mixer.Sample(0)
 	want := 0.6
 
@@ -267,7 +267,7 @@ func TestLayerMixer_ClampsOutput(t *testing.T) {
 	l1 := &mockLayer{value: 0.7}
 	l2 := &mockLayer{value: 0.5}
 
-	mixer := NewLayerMixer(l1, l2)
+	mixer := newLayerMixer(l1, l2)
 	got := mixer.Sample(0)
 
 	// 0.7 + 0.5 = 1.2, should be clamped to 1.0
@@ -280,7 +280,7 @@ func TestLayerMixer_ClampsNegative(t *testing.T) {
 	l1 := &mockLayer{value: -0.7}
 	l2 := &mockLayer{value: -0.5}
 
-	mixer := NewLayerMixer(l1, l2)
+	mixer := newLayerMixer(l1, l2)
 	got := mixer.Sample(0)
 
 	// -0.7 + -0.5 = -1.2, should be clamped to -1.0
@@ -290,7 +290,7 @@ func TestLayerMixer_ClampsNegative(t *testing.T) {
 }
 
 func TestLayerMixer_ZeroLayers(t *testing.T) {
-	mixer := NewLayerMixer()
+	mixer := newLayerMixer()
 	got := mixer.Sample(0)
 
 	if got != 0 {
@@ -301,7 +301,7 @@ func TestLayerMixer_ZeroLayers(t *testing.T) {
 // --- Benchmarks ---
 
 func BenchmarkSweepJumpLayer_PrimaryScream(b *testing.B) {
-	layer := NewPrimaryScreamLayer(validPrimaryScreamParams(), testSampleRate)
+	layer := newPrimaryScreamLayer(validPrimaryScreamParams(), testSampleRate)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		layer.Sample(float64(i) / float64(testSampleRate))
@@ -309,14 +309,14 @@ func BenchmarkSweepJumpLayer_PrimaryScream(b *testing.B) {
 }
 
 func BenchmarkLayerMixer(b *testing.B) {
-	layers := []Layer{
-		NewPrimaryScreamLayer(validPrimaryScreamParams(), testSampleRate),
-		NewHarmonicSweepLayer(validHarmonicSweepParams(), testSampleRate),
-		NewHighShriekLayer(validHighShriekParams(), testSampleRate),
-		NewNoiseBurstLayer(validNoiseBurstParams(), validNoiseParams()),
-		NewBackgroundNoiseLayer(validNoiseParams()),
+	layers := []layer{
+		newPrimaryScreamLayer(validPrimaryScreamParams(), testSampleRate),
+		newHarmonicSweepLayer(validHarmonicSweepParams(), testSampleRate),
+		newHighShriekLayer(validHighShriekParams(), testSampleRate),
+		newNoiseBurstLayer(validNoiseBurstParams(), validNoiseParams()),
+		newBackgroundNoiseLayer(validNoiseParams()),
 	}
-	mixer := NewLayerMixer(layers...)
+	mixer := newLayerMixer(layers...)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		mixer.Sample(float64(i) / float64(testSampleRate))

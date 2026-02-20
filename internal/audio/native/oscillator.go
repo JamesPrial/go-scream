@@ -2,44 +2,44 @@ package native
 
 import "math"
 
-// Oscillator generates audio samples using a phase accumulator pattern.
-type Oscillator struct {
-	phase      float64
+// oscillator generates audio samples using a phase accumulator pattern.
+type oscillator struct {
+	pos        float64 // phase accumulator in [0, 1)
 	sampleRate float64
 }
 
-// NewOscillator creates a new oscillator at the given sample rate.
-func NewOscillator(sampleRate int) *Oscillator {
-	return &Oscillator{sampleRate: float64(sampleRate)}
+// newOscillator creates a new oscillator at the given sample rate.
+func newOscillator(sampleRate int) *oscillator {
+	return &oscillator{sampleRate: float64(sampleRate)}
 }
 
-// Sin generates a sine wave sample at the given frequency and advances the phase.
-func (o *Oscillator) Sin(freq float64) float64 {
-	sample := math.Sin(2 * math.Pi * o.phase)
-	o.phase += freq / o.sampleRate
+// sin generates a sine wave sample at the given frequency and advances the phase.
+func (o *oscillator) sin(freq float64) float64 {
+	sample := math.Sin(2 * math.Pi * o.pos)
+	o.pos += freq / o.sampleRate
 	// Keep phase in [0, 1) to prevent floating point drift
-	if o.phase >= 1.0 {
-		o.phase -= 1.0
+	if o.pos >= 1.0 {
+		o.pos -= 1.0
 	}
 	return sample
 }
 
-// Saw generates a sawtooth wave sample at the given frequency and advances the phase.
-func (o *Oscillator) Saw(freq float64) float64 {
-	sample := 2*o.phase - 1 // Maps [0,1) to [-1,1)
-	o.phase += freq / o.sampleRate
-	if o.phase >= 1.0 {
-		o.phase -= 1.0
+// saw generates a sawtooth wave sample at the given frequency and advances the phase.
+func (o *oscillator) saw(freq float64) float64 {
+	sample := 2*o.pos - 1 // Maps [0,1) to [-1,1)
+	o.pos += freq / o.sampleRate
+	if o.pos >= 1.0 {
+		o.pos -= 1.0
 	}
 	return sample
 }
 
-// Phase returns the current oscillator phase [0, 1).
-func (o *Oscillator) Phase() float64 {
-	return o.phase
+// phase returns the current oscillator phase [0, 1).
+func (o *oscillator) phase() float64 {
+	return o.pos
 }
 
-// Reset sets the oscillator phase to zero.
-func (o *Oscillator) Reset() {
-	o.phase = 0
+// reset sets the oscillator phase to zero.
+func (o *oscillator) reset() {
+	o.pos = 0
 }
