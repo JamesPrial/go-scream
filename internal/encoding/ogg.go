@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/pion/rtp"
-	"github.com/pion/webrtc/v3/pkg/media/oggwriter"
+	"github.com/pion/webrtc/v4/pkg/media/oggwriter"
 )
 
 // OGGEncoder encodes raw s16le PCM audio into an OGG/Opus container.
