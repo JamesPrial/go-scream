@@ -26,3 +26,4 @@ coverage.txt
 
 # Firebase
 firebase-debug.log
+.worktrees/
