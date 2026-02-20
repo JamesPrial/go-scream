@@ -1,247 +1,200 @@
-# Test Execution Report — Stage 2: Audio Encoding
+# Test Execution Report — Stage 2: Rename Stuttered Types
 
-**Date:** 2026-02-18
-**Package under test:** `github.com/JamesPrial/go-scream/internal/encoding`
+**Date:** 2026-02-19
+**Stage:** Stage 2 — Rename stuttered types
+**Baseline ref:** `.claude/golang-workflow/refactor-baseline.md`
 
 ---
 
 ## Summary
 
-- **Verdict:** TESTS_PASS
-- **Tests Run:** 67 passed, 0 failed (encoding package); Stage 1 also fully passing
-- **Coverage:** 86.5%
-- **Race Conditions:** None detected
-- **Vet Warnings:** None
-- **Linter Issues:** 3 non-blocking issues (see Linter Output section)
+| Check | Result |
+|-------|--------|
+| **Verdict** | **TESTS_PASS** |
+| `go test -v ./...` | ALL PASS |
+| `go test -race ./...` | NO RACES (3 macOS `ld` LC_DYSYMTAB linker warnings — pre-existing OS artifact, identical to baseline) |
+| `go vet ./...` | NO WARNINGS |
+| `go test -cover ./...` | Coverage identical to baseline (see table) |
+| `golangci-lint run` | 0 issues |
+
+---
+
+## Regression Detection
+
+### Classification of test-name changes (expected, not regressions)
+
+| Baseline name | Stage 2 name | Classification |
+|---|---|---|
+| `TestNativeGenerator_CorrectByteCount` | `TestGenerator_CorrectByteCount` | RENAMED — same test, different function name |
+| `TestNativeGenerator_NonSilent` | `TestGenerator_NonSilent` | RENAMED |
+| `TestNativeGenerator_Deterministic` | `TestGenerator_Deterministic` | RENAMED |
+| `TestNativeGenerator_DifferentSeeds` | `TestGenerator_DifferentSeeds` | RENAMED |
+| `TestNativeGenerator_AllPresets` | `TestGenerator_AllPresets` | RENAMED |
+| `TestNativeGenerator_InvalidParams` | `TestGenerator_InvalidParams` | RENAMED |
+| `TestNativeGenerator_MonoOutput` | `TestGenerator_MonoOutput` | RENAMED |
+| `TestNativeGenerator_S16LERange` | `TestGenerator_S16LERange` | RENAMED |
+| `TestNativeGenerator_ImplementsInterface` | `TestGenerator_ImplementsInterface` | RENAMED |
+| `TestNewFFmpegGenerator_Success` | `TestNewGenerator_Success` | RENAMED (still SKIP — no ffmpeg) |
+| `TestNewFFmpegGeneratorWithPath_NotNil` | `TestNewGeneratorWithPath_NotNil` | RENAMED |
+| `TestFFmpegGenerator_CorrectByteCount` | `TestGenerator_CorrectByteCount` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_NonSilent` | `TestGenerator_NonSilent` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_AllPresets` | `TestGenerator_AllPresets` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_AllNamedPresets` | `TestGenerator_AllNamedPresets` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_InvalidDuration` | `TestGenerator_InvalidDuration` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_NegativeDuration` | `TestGenerator_NegativeDuration` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_InvalidSampleRate` | `TestGenerator_InvalidSampleRate` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_NegativeSampleRate` | `TestGenerator_NegativeSampleRate` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_InvalidChannels` | `TestGenerator_InvalidChannels` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_ZeroChannels` | `TestGenerator_ZeroChannels` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_BadBinaryPath` | `TestGenerator_BadBinaryPath` (ffmpeg pkg) | RENAMED |
+| `TestFFmpegGenerator_InvalidAmplitude` | `TestGenerator_InvalidAmplitude` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_InvalidCrusherBits` | `TestGenerator_InvalidCrusherBits` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_InvalidLimiterLevel` | `TestGenerator_InvalidLimiterLevel` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_EvenByteCount` | `TestGenerator_EvenByteCount` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_StereoAligned` | `TestGenerator_StereoAligned` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_MonoOutput` | `TestGenerator_MonoOutput` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestFFmpegGenerator_DeterministicOutput` | `TestGenerator_DeterministicOutput` (ffmpeg pkg) | RENAMED (still SKIP) |
+| `TestNewDiscordPlayer_NotNil` | `TestNewPlayer_NotNil` | RENAMED |
+| `TestDiscordPlayer_Play_10Frames` | `TestPlayer_Play_10Frames` | RENAMED |
+| `TestDiscordPlayer_Play_EmptyChannel` | `TestPlayer_Play_EmptyChannel` | RENAMED |
+| `TestDiscordPlayer_Play_1Frame` | `TestPlayer_Play_1Frame` | RENAMED |
+| `TestDiscordPlayer_Play_SpeakingProtocol` | `TestPlayer_Play_SpeakingProtocol` | RENAMED |
+| `TestDiscordPlayer_Play_SilenceFrames` | `TestPlayer_Play_SilenceFrames` | RENAMED |
+| `TestDiscordPlayer_Play_DisconnectCalled` | `TestPlayer_Play_DisconnectCalled` | RENAMED |
+| `TestDiscordPlayer_Play_DisconnectOnError` | `TestPlayer_Play_DisconnectOnError` | RENAMED |
+| `TestDiscordPlayer_Play_JoinParams` | `TestPlayer_Play_JoinParams` | RENAMED |
+| `TestDiscordPlayer_Play_EmptyGuildID` | `TestPlayer_Play_EmptyGuildID` | RENAMED |
+| `TestDiscordPlayer_Play_EmptyChannelID` | `TestPlayer_Play_EmptyChannelID` | RENAMED |
+| `TestDiscordPlayer_Play_NilFrames` | `TestPlayer_Play_NilFrames` | RENAMED |
+| `TestDiscordPlayer_Play_JoinFails` | `TestPlayer_Play_JoinFails` | RENAMED |
+| `TestDiscordPlayer_Play_SpeakingTrueFails` | `TestPlayer_Play_SpeakingTrueFails` | RENAMED |
+| `TestDiscordPlayer_Play_CancelledContext` | `TestPlayer_Play_CancelledContext` | RENAMED |
+| `TestDiscordPlayer_Play_CancelMidPlayback` | `TestPlayer_Play_CancelMidPlayback` | RENAMED |
+| `TestDiscordPlayer_Play_ValidationErrors` | `TestPlayer_Play_ValidationErrors` | RENAMED |
+| `T_Close_NilCloser` (baseline typo) | `Test_Close_NilCloser` | FIXED TYPO (was missing `est_` prefix in baseline listing; actual function was always `Test_Close_NilCloser`) |
+
+**No regressions detected.** Every test that passed in the baseline passes now. Every test that was skipped in the baseline (18 ffmpeg-dependent tests) is still skipped now. Test COUNT is identical.
 
 ---
 
 ## Test Results
 
-```
-=== RUN   TestConstants
-=== RUN   TestConstants/OpusFrameSamples
-=== RUN   TestConstants/MaxOpusFrameBytes
-=== RUN   TestConstants/OpusBitrate
---- PASS: TestConstants (0.00s)
-    --- PASS: TestConstants/OpusFrameSamples (0.00s)
-    --- PASS: TestConstants/MaxOpusFrameBytes (0.00s)
-    --- PASS: TestConstants/OpusBitrate (0.00s)
-=== RUN   TestPcmBytesToInt16_KnownValues
-=== RUN   TestPcmBytesToInt16_KnownValues/zero
-=== RUN   TestPcmBytesToInt16_KnownValues/positive_one
-=== RUN   TestPcmBytesToInt16_KnownValues/negative_one
-=== RUN   TestPcmBytesToInt16_KnownValues/256_(0x0100)
-=== RUN   TestPcmBytesToInt16_KnownValues/multiple_samples
-=== RUN   TestPcmBytesToInt16_KnownValues/little-endian_0x0201_=_513
-=== RUN   TestPcmBytesToInt16_KnownValues/0x80FF_=_-32513_in_signed
---- PASS: TestPcmBytesToInt16_KnownValues (0.00s)
-=== RUN   TestPcmBytesToInt16_EmptyInput
---- PASS: TestPcmBytesToInt16_EmptyInput (0.00s)
-=== RUN   TestPcmBytesToInt16_RoundTrip
---- PASS: TestPcmBytesToInt16_RoundTrip (0.00s)
-=== RUN   TestPcmBytesToInt16_MaxValues
-=== RUN   TestPcmBytesToInt16_MaxValues/int16_max_(32767)
-=== RUN   TestPcmBytesToInt16_MaxValues/int16_min_(-32768)
---- PASS: TestPcmBytesToInt16_MaxValues (0.00s)
-=== RUN   TestOGGEncoder_ImplementsFileEncoder
---- PASS: TestOGGEncoder_ImplementsFileEncoder (0.00s)
-=== RUN   TestOGGEncoder_StartsWithOggS
---- PASS: TestOGGEncoder_StartsWithOggS (0.00s)
-=== RUN   TestOGGEncoder_NonEmptyOutput
---- PASS: TestOGGEncoder_NonEmptyOutput (0.00s)
-=== RUN   TestOGGEncoder_InvalidSampleRate
-=== RUN   TestOGGEncoder_InvalidSampleRate/zero
-=== RUN   TestOGGEncoder_InvalidSampleRate/negative
---- PASS: TestOGGEncoder_InvalidSampleRate (0.00s)
-=== RUN   TestOGGEncoder_InvalidChannels
-=== RUN   TestOGGEncoder_InvalidChannels/zero
-=== RUN   TestOGGEncoder_InvalidChannels/three
-=== RUN   TestOGGEncoder_InvalidChannels/negative
---- PASS: TestOGGEncoder_InvalidChannels (0.00s)
-=== RUN   TestOGGEncoder_OpusError
---- PASS: TestOGGEncoder_OpusError (0.00s)
-=== RUN   TestOGGEncoder_EmptyFrames
---- PASS: TestOGGEncoder_EmptyFrames (0.00s)
-=== RUN   TestOGGEncoder_WriterError
---- PASS: TestOGGEncoder_WriterError (0.00s)
-=== RUN   TestNewOGGEncoder_NotNil
---- PASS: TestNewOGGEncoder_NotNil (0.00s)
-=== RUN   TestNewOGGEncoderWithOpus_NotNil
---- PASS: TestNewOGGEncoderWithOpus_NotNil (0.00s)
-=== RUN   TestOGGEncoder_VariousFrameCounts
-=== RUN   TestOGGEncoder_VariousFrameCounts/1_frame
-=== RUN   TestOGGEncoder_VariousFrameCounts/10_frames
-=== RUN   TestOGGEncoder_VariousFrameCounts/50_frames
-=== RUN   TestOGGEncoder_VariousFrameCounts/150_frames_(3s)
---- PASS: TestOGGEncoder_VariousFrameCounts (0.00s)
-=== RUN   TestGopusFrameEncoder_ImplementsInterface
---- PASS: TestGopusFrameEncoder_ImplementsInterface (0.00s)
-=== RUN   TestGopusFrameEncoder_FrameCount_3s
---- PASS: TestGopusFrameEncoder_FrameCount_3s (0.01s)
-=== RUN   TestGopusFrameEncoder_FrameCount_1Frame
---- PASS: TestGopusFrameEncoder_FrameCount_1Frame (0.00s)
-=== RUN   TestGopusFrameEncoder_PartialFrame
---- PASS: TestGopusFrameEncoder_PartialFrame (0.00s)
-=== RUN   TestGopusFrameEncoder_SingleSample
---- PASS: TestGopusFrameEncoder_SingleSample (0.00s)
-=== RUN   TestGopusFrameEncoder_EmptyInput
---- PASS: TestGopusFrameEncoder_EmptyInput (0.00s)
-=== RUN   TestGopusFrameEncoder_FrameSizeBounds
---- PASS: TestGopusFrameEncoder_FrameSizeBounds (0.00s)
-=== RUN   TestGopusFrameEncoder_MonoEncoding
---- PASS: TestGopusFrameEncoder_MonoEncoding (0.00s)
-=== RUN   TestGopusFrameEncoder_InvalidSampleRate
-=== RUN   TestGopusFrameEncoder_InvalidSampleRate/zero
-=== RUN   TestGopusFrameEncoder_InvalidSampleRate/22050_(unsupported_by_opus)
-=== RUN   TestGopusFrameEncoder_InvalidSampleRate/negative
---- PASS: TestGopusFrameEncoder_InvalidSampleRate (0.00s)
-=== RUN   TestGopusFrameEncoder_InvalidChannels
-=== RUN   TestGopusFrameEncoder_InvalidChannels/zero
-=== RUN   TestGopusFrameEncoder_InvalidChannels/three
-=== RUN   TestGopusFrameEncoder_InvalidChannels/negative
---- PASS: TestGopusFrameEncoder_InvalidChannels (0.00s)
-=== RUN   TestGopusFrameEncoder_ChannelsClosed
---- PASS: TestGopusFrameEncoder_ChannelsClosed (0.00s)
-=== RUN   TestGopusFrameEncoder_ChannelsClosed_OnError
---- PASS: TestGopusFrameEncoder_ChannelsClosed_OnError (0.00s)
-=== RUN   TestNewGopusFrameEncoder_NotNil
---- PASS: TestNewGopusFrameEncoder_NotNil (0.00s)
-=== RUN   TestNewGopusFrameEncoderWithBitrate_NotNil
---- PASS: TestNewGopusFrameEncoderWithBitrate_NotNil (0.00s)
-=== RUN   TestWAVEncoder_ImplementsFileEncoder
---- PASS: TestWAVEncoder_ImplementsFileEncoder (0.00s)
-=== RUN   TestWAVEncoder_HeaderByteLayout
---- PASS: TestWAVEncoder_HeaderByteLayout (0.00s)
-=== RUN   TestWAVEncoder_OutputSize
-=== RUN   TestWAVEncoder_OutputSize/1_sample_stereo
-=== RUN   TestWAVEncoder_OutputSize/100_samples_stereo
-=== RUN   TestWAVEncoder_OutputSize/48000_samples_mono
-=== RUN   TestWAVEncoder_OutputSize/1000_samples_stereo_44100
-=== RUN   TestWAVEncoder_OutputSize/0_samples
---- PASS: TestWAVEncoder_OutputSize (0.00s)
-=== RUN   TestWAVEncoder_Stereo48kHz
---- PASS: TestWAVEncoder_Stereo48kHz (0.00s)
-=== RUN   TestWAVEncoder_Mono44100
---- PASS: TestWAVEncoder_Mono44100 (0.00s)
-=== RUN   TestWAVEncoder_EmptyInput
---- PASS: TestWAVEncoder_EmptyInput (0.00s)
-=== RUN   TestWAVEncoder_SingleSample
---- PASS: TestWAVEncoder_SingleSample (0.00s)
-=== RUN   TestWAVEncoder_PCMDataPreserved
---- PASS: TestWAVEncoder_PCMDataPreserved (0.00s)
-=== RUN   TestWAVEncoder_InvalidSampleRate
-=== RUN   TestWAVEncoder_InvalidSampleRate/zero
-=== RUN   TestWAVEncoder_InvalidSampleRate/negative
-=== RUN   TestWAVEncoder_InvalidSampleRate/large_negative
---- PASS: TestWAVEncoder_InvalidSampleRate (0.00s)
-=== RUN   TestWAVEncoder_InvalidChannels
-=== RUN   TestWAVEncoder_InvalidChannels/zero
-=== RUN   TestWAVEncoder_InvalidChannels/negative
-=== RUN   TestWAVEncoder_InvalidChannels/three
-=== RUN   TestWAVEncoder_InvalidChannels/large
---- PASS: TestWAVEncoder_InvalidChannels (0.00s)
-=== RUN   TestWAVEncoder_WriterError
---- PASS: TestWAVEncoder_WriterError (0.00s)
-=== RUN   TestWAVEncoder_HeaderFields_TableDriven
-=== RUN   TestWAVEncoder_HeaderFields_TableDriven/48kHz_stereo_1s
-=== RUN   TestWAVEncoder_HeaderFields_TableDriven/44100Hz_mono_0.5s
-=== RUN   TestWAVEncoder_HeaderFields_TableDriven/48kHz_mono_20ms
-=== RUN   TestWAVEncoder_HeaderFields_TableDriven/22050Hz_stereo_1s
---- PASS: TestWAVEncoder_HeaderFields_TableDriven (0.00s)
-PASS
-ok  	github.com/JamesPrial/go-scream/internal/encoding	0.263s
-```
+### Package: `github.com/JamesPrial/go-scream/cmd/scream`
+No test files.
 
----
+### Package: `github.com/JamesPrial/go-scream/cmd/skill`
+All 13 top-level test functions PASS (cached).
 
-## Stage 1 Regression Check
+### Package: `github.com/JamesPrial/go-scream/internal/audio`
+All 14 top-level test functions PASS (cached).
 
-Both Stage 1 packages pass with zero failures:
+### Package: `github.com/JamesPrial/go-scream/internal/audio/ffmpeg`
+- PASS: 5 top-level tests (including all command/arg/filter tests)
+- SKIP: 18 tests (ffmpeg not on PATH — pre-existing, identical to baseline)
+- Run time: 0.322s
 
-```
-ok  	github.com/JamesPrial/go-scream/internal/audio	0.490s
-ok  	github.com/JamesPrial/go-scream/internal/audio/native	0.627s
-```
+### Package: `github.com/JamesPrial/go-scream/internal/audio/native`
+All tests PASS including:
+- `TestGenerator_CorrectByteCount` (was `TestNativeGenerator_CorrectByteCount`)
+- `TestGenerator_NonSilent`
+- `TestGenerator_Deterministic`
+- `TestGenerator_DifferentSeeds`
+- `TestGenerator_AllPresets` (subtests: classic, whisper, death-metal, glitch, banshee, robot)
+- `TestGenerator_InvalidParams`
+- `TestGenerator_MonoOutput`
+- `TestGenerator_S16LERange`
+- `TestGenerator_ImplementsInterface`
+- All filter, layer, mixer, and oscillator tests unchanged
+- Run time: 1.450s
 
-All 40 Stage 1 tests continue to pass (params, presets, DSP filters, native generator, oscillator, layer tests).
+### Package: `github.com/JamesPrial/go-scream/internal/config`
+All tests PASS (cached).
+
+### Package: `github.com/JamesPrial/go-scream/internal/discord`
+All tests PASS including:
+- `TestNewPlayer_NotNil` (was `TestNewDiscordPlayer_NotNil`)
+- `TestPlayer_Play_10Frames` (was `TestDiscordPlayer_Play_10Frames`)
+- All remaining `TestPlayer_Play_*` tests (were `TestDiscordPlayer_Play_*`)
+- `TestFindPopulatedChannel_*` tests unchanged
+- Run time: 0.941s
+
+### Package: `github.com/JamesPrial/go-scream/internal/encoding`
+All tests PASS (cached).
+
+### Package: `github.com/JamesPrial/go-scream/internal/scream`
+All tests PASS including:
+- `Test_Close_NilCloser` (baseline had `T_Close_NilCloser` — baseline was a transcription typo, actual function was always correct)
+- All other `Test_*` service tests unchanged
+- Run time: 1.353s
+
+### Package: `github.com/JamesPrial/go-scream/pkg/version`
+All tests PASS (cached).
 
 ---
 
 ## Race Detection
 
-```
-ok  	github.com/JamesPrial/go-scream/internal/encoding	1.342s
-```
+No races detected.
 
-Note: A linker warning was emitted (`ld: warning: malformed LC_DYSYMTAB`) — this is a macOS toolchain cosmetic warning unrelated to race conditions. No races were detected. The test binary ran successfully.
-
-**No race conditions detected.**
+Three macOS linker (`ld`) warnings appeared during race-instrumented linking (same packages as baseline):
+```
+ld: warning: '...000012.o' has malformed LC_DYSYMTAB, expected 98 undefined symbols
+    to start at index 1626, found 95 undefined symbols starting at index 1626
+```
+Affected packages: `internal/encoding`, `cmd/skill`, `internal/scream`. This is a pre-existing macOS SDK/toolchain artifact, not a Go race condition. Identical to baseline.
 
 ---
 
 ## Static Analysis
 
 ```
-go vet ./internal/encoding/...
-(no output — exit code 0)
+go vet ./...
 ```
-
-**No vet warnings.**
+No output. Zero warnings. Clean.
 
 ---
 
 ## Coverage Details
 
-```
-ok  	github.com/JamesPrial/go-scream/internal/encoding	0.572s	coverage: 86.5% of statements
-```
-
-**Coverage: 86.5%** — exceeds the 70% threshold.
+| Package | Coverage | vs Baseline |
+|---------|----------|-------------|
+| `cmd/scream` | 0.0% (no test files) | = |
+| `cmd/skill` | 21.7% | = |
+| `internal/audio` | 87.5% | = |
+| `internal/audio/ffmpeg` | 90.6% | = |
+| `internal/audio/native` | 100.0% | = |
+| `internal/config` | 97.6% | = |
+| `internal/discord` | 64.1% | = (pre-existing, not a failure) |
+| `internal/encoding` | 85.7% | = |
+| `internal/scream` | 95.0% | = |
+| `pkg/version` | 100.0% | = |
 
 ---
 
 ## Linter Output
 
-`golangci-lint` ran successfully and found 3 issues:
-
 ```
-internal/encoding/ogg.go:42:23: Error return value of `oggWriter.Close` is not checked (errcheck)
-	defer oggWriter.Close()
-	                     ^
-internal/encoding/opus_test.go:50:2: S1000: should use a simple channel send/receive instead of select with a single case (staticcheck)
-	select {
-	^
-internal/encoding/opus_test.go:309:2: S1000: should use a simple channel send/receive instead of select with a single case (staticcheck)
-	select {
-	^
-3 issues:
-* errcheck: 1
-* staticcheck: 2
+golangci-lint run
+0 issues.
 ```
-
-### Linter Issue Classification
-
-| # | File | Line | Rule | Severity | Description |
-|---|------|------|------|----------|-------------|
-| 1 | `internal/encoding/ogg.go` | 42 | `errcheck` | Low | `defer oggWriter.Close()` return value unchecked. In a `defer`, the error cannot be easily surfaced anyway, but could be wrapped in a named return or logged. |
-| 2 | `internal/encoding/opus_test.go` | 50 | `S1000` | Low | Single-case `select` in `drainFrames` — a direct channel receive (`e := <-errCh`) is idiomatic. |
-| 3 | `internal/encoding/opus_test.go` | 309 | `S1000` | Low | Same single-case `select` pattern in `TestGopusFrameEncoder_ChannelsClosed`. |
-
-All three issues are non-blocking style/hygiene items. The `errcheck` finding on `ogg.go:42` is the most actionable — consider wrapping the error in a named return if the Close error needs propagation. The two `S1000` findings are in test code and can be simplified to direct receives.
 
 ---
 
-## Pass Criteria Checklist
+## Test Count Verification
 
-- [x] All `go test` commands exit with status 0
-- [x] No race conditions detected by `-race`
-- [x] No warnings from `go vet`
-- [x] Coverage meets threshold: **86.5% > 70%**
-- [ ] No linter errors — 3 non-critical style issues found (non-blocking)
+| Metric | Baseline | Stage 2 | Delta |
+|--------|----------|---------|-------|
+| Tests passed | ~200+ | ~200+ | 0 |
+| Tests failed | 0 | 0 | 0 |
+| Tests skipped | 18 (ffmpeg) | 18 (ffmpeg) | 0 |
+| Race conditions | 0 | 0 | 0 |
+| Vet warnings | 0 | 0 | 0 |
+| Lint issues | 0 | 0 | 0 |
+
+Test function renames (expected by design): 46 functions renamed due to stutter removal. No tests were added or removed.
 
 ---
 
-## TESTS_PASS
+## VERDICT: TESTS_PASS
 
-All functional tests pass, no races, no vet warnings, coverage at 86.5%. Stage 1 regression is clean. Three non-blocking linter style issues exist in `ogg.go` (unchecked `defer Close`) and two test-only `select` simplifications in `opus_test.go`.
+All checks pass. No regressions. Coverage identical to baseline. All 46 renamed test functions now correctly use the de-stuttered names (`Generator`, `Player` instead of `NativeGenerator`, `FFmpegGenerator`, `DiscordPlayer`). The rename in Stage 2 is a pure cosmetic change with zero behavioral impact.

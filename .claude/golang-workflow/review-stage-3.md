@@ -1,119 +1,108 @@
-# Code Review: Stage 3 -- FFmpeg Backend
+# Stage 3 Review: Remove `reflect` dependency and dead `closer` field
 
-**Verdict: REQUEST_CHANGES**
-
-## Files Reviewed
-
-- `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/errors.go`
-- `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/command.go`
-- `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/generator.go`
-- `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/command_test.go`
-- `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/generator_test.go`
-
-## Summary
-
-The FFmpeg backend is well-structured and follows the project patterns established by the NativeGenerator. The code demonstrates good separation of concerns (command building vs. process execution), proper error wrapping, compile-time interface verification, and thorough test coverage. Two issues must be addressed before approval.
+**Reviewer:** Go Reviewer Agent
+**Date:** 2026-02-19
+**Files reviewed:**
+- `/Users/jamesprial/code/go-scream/internal/scream/service.go`
+- `/Users/jamesprial/code/go-scream/internal/scream/service_test.go`
+- `/Users/jamesprial/code/go-scream/internal/scream/errors.go`
+- `/Users/jamesprial/code/go-scream/internal/scream/resolve.go`
 
 ---
 
-## Required Changes
+## 1. Behavior Preservation
 
-### 1. Unnecessary error wrapping in `NewFFmpegGenerator` (minor)
+**PASS.** All remaining methods are unchanged in behavior:
 
-**File:** `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/generator.go`, line 25
+- `Play()` (lines 46-92 of `service.go`): Identical logic -- validates guildID, checks player nil guard, checks context, resolves params, generates audio, encodes frames, plays or drains in dry-run mode. Error wrapping with `%w` is preserved for all sentinel errors (`ErrGenerateFailed`, `ErrEncodeFailed`, `ErrPlayFailed`).
 
-```go
-return nil, fmt.Errorf("%w", ErrFFmpegNotFound)
-```
+- `Generate()` (lines 96-116 of `service.go`): Identical logic -- checks context, resolves params, generates, encodes to file. Same error wrapping.
 
-This wraps `ErrFFmpegNotFound` with `fmt.Errorf("%w", ...)` but adds no additional context. The format string is just `"%w"`, so the resulting error message is identical to the sentinel itself. Either add meaningful context (e.g., the underlying `exec.LookPath` error) or return the sentinel directly:
+- `ListPresets()` (lines 119-126 of `service.go`): Unchanged.
 
-**Option A** -- return sentinel directly:
-```go
-return nil, ErrFFmpegNotFound
-```
+- `NewServiceWithDeps()` (lines 27-41 of `service.go`): The function body is simplified to a direct struct literal return. The typed-nil normalization block using `reflect` has been removed, and the doc comment now explicitly states callers must pass untyped nil. This is the intended behavioral shift -- the responsibility moves to the caller.
 
-**Option B** -- wrap with context from exec.LookPath:
-```go
-return nil, fmt.Errorf("%w: %v", ErrFFmpegNotFound, err)
-```
+No new functionality was added.
 
-Option B is preferred because it preserves the underlying OS-level error message (e.g., "executable file not found in $PATH") for debugging, while still allowing callers to match with `errors.Is(err, ErrFFmpegNotFound)`.
+## 2. API Break Detection
 
-### 2. Confusing subtest names in `TestFFmpegGenerator_AllPresets`
+**PASS.** Only the two approved deletions were made:
 
-**File:** `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/generator_test.go`, line 158
+| Approved Deletion | Status | Verified |
+|---|---|---|
+| `Service.closer` (unexported field) | Removed from struct (line 21 area) | Yes |
+| `Service.Close()` (exported method) | Removed entirely (was lines 127-134) | Yes |
 
-```go
-t.Run("seed_"+string(rune('0'+seed%10)), func(t *testing.T) {
-```
+Additional changes in the diff that are consistent with Stage 2 (already approved):
+- `audio.AudioGenerator` -> `audio.Generator` in both the struct field type and constructor parameter. This is from Stage 2 and is expected.
 
-This produces subtest names that do not match the actual seed values. For example, seed `42` becomes subtest `seed_2`, and seed `100` becomes `seed_0`. This harms test output readability and makes failure diagnosis harder. Use `fmt.Sprintf` for clarity:
+No other structural changes to the `Service` type or its remaining methods.
 
-```go
-t.Run(fmt.Sprintf("seed_%d", seed), func(t *testing.T) {
-```
+### reflect import removal
 
-Note: the `fmt` package is already imported in this file.
+The `"reflect"` import is completely gone from `service.go`. A codebase-wide search confirms no other Go source file imports `"reflect"` -- only a workflow documentation file references it in prose.
+
+## 3. Code Quality
+
+### Production code (`service.go`)
+
+- **Import block** (lines 3-12): Clean. Contains only `context`, `fmt`, `io`, and the four internal packages. No unused imports. The `"reflect"` import is gone.
+
+- **Service struct** (lines 15-21): Five fields, all necessary. No `closer` field. Clean and minimal.
+
+- **Doc comment on `NewServiceWithDeps`** (lines 23-26): Updated to include:
+  > Callers must pass an untyped nil (not a typed-nil interface value) when no player is needed.
+
+  This is the correct replacement for the reflect-based normalization. The comment is clear and actionable.
+
+- **No leftover references**: A codebase-wide search for `svc.Close`, `Service.Close`, and the `closer` field in Go source files found zero results in production or test code. All hits are in `.claude/golang-workflow/` documentation files only.
+
+### Support files
+
+- `errors.go`: Unchanged. All five sentinel errors remain with their `"scream:"` prefixed messages and doc comments.
+- `resolve.go`: Unchanged. Param resolution logic is intact.
+
+## 4. Test Quality
+
+### Removals (all correct)
+
+- **`mockCloser` type**: Removed (was ~20 lines). No longer needed since `Service.Close()` is gone.
+
+- **Close tests removed** (4 tests, ~75 lines):
+  - `Test_Close_WithCloser`
+  - `Test_Close_WithCloserError`
+  - `Test_Close_NilCloser`
+  - `Test_Close_CalledTwice_NoPanic`
+
+  All four correctly removed. These tested the deleted `Close()` method and relied on direct `svc.closer = mc` field assignment.
+
+- **No `svc.closer` assignments remain**: Confirmed via grep. Zero occurrences in any Go source file.
+
+### Preserved tests (all intact)
+
+The test file retains 925 lines with full coverage of all remaining functionality:
+
+- **NewServiceWithDeps**: 3 tests (non-nil return, nil player, config storage)
+- **Play**: 10 tests (happy path, preset params, guild/channel forwarding, validation table test, generator error, player error, dry-run skip, dry-run nil player, context cancelled, unknown preset, multiple presets)
+- **Generate**: 7 tests (happy path OGG, happy path WAV, no token required, generator error, file encoder error, unknown preset, player not invoked)
+- **ListPresets**: 4 tests (returns all, contains expected names, no duplicates, deterministic)
+- **resolveParams** (indirect): 2 tests (preset overrides duration, empty preset uses randomize)
+- **Sentinel errors**: 1 table-driven test covering all 5 errors
+- **Error wrapping**: 4 tests (play generator, play player, generate generator, generate encoder)
+- **Benchmarks**: 3 (Play, Generate, ListPresets)
+
+### Minor comment update
+
+Line 22 of the test file updated the mockGenerator doc comment from `audio.AudioGenerator` to `audio.Generator`, consistent with Stage 2 rename. Correct.
+
+## 5. Caller Impact Assessment
+
+The `Service.Close()` method deletion is marked as breaking in the API changes document. However, a codebase-wide search confirms that `Service.Close()` was never called from any production code (`cmd/scream/`, `cmd/skill/`). The CLI manages the Discord session's `io.Closer` lifecycle separately via `newServiceFromConfig` returning a standalone `io.Closer`. The `closer` references in `cmd/scream/play.go` and `cmd/scream/generate.go` are local variables for the Discord session, not the `Service.closer` field. No callers are broken by this deletion.
 
 ---
 
-## Observations (non-blocking, for awareness)
+## Verdict
 
-### Hardcoded sample rate constant in `layerExpr`
+**APPROVE**
 
-**File:** `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/command.go`, line 54
-
-```go
-sampleRate := "48000" // aevalsrc uses its own sample rate; use a constant for the random seeding
-```
-
-The `random(t*48000)` inside noise layer expressions uses a hardcoded `"48000"` rather than the params sample rate. The comment explains the intent: this value seeds the random function's sampling density, not the output sample rate. The `aevalsrc` `s=` parameter on line 21 does correctly use `params.SampleRate`. This is acceptable as-is since `48000` is effectively a constant for the expression's random granularity, but it would be slightly cleaner as a named package-level constant with a more descriptive name (e.g., `exprRandomSampleRate`).
-
-### Duplicated `FilterParams` literal across filter chain tests
-
-**File:** `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/command_test.go`, lines 260-394
-
-The same `audio.FilterParams{...}` struct literal is repeated verbatim in six test functions (`Test_buildFilterChain_ContainsHighpass` through `Test_buildFilterChain_FilterOrder`). Extracting a `testFilterParams()` helper (similar to the existing `classicParams()`) would reduce duplication and make it easier to update the test values in one place.
-
-### Memory usage for long durations
-
-**File:** `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/generator.go`, line 46-54
-
-The entire FFmpeg output is buffered into `bytes.Buffer` before returning. For a 4-second stereo 48kHz s16le output, this is approximately 768KB, which is acceptable. However, if the duration is ever extended significantly, this could become a concern. The NativeGenerator uses the same buffered approach, so this is consistent with the project pattern. No action needed now.
-
-### Process lifecycle
-
-The use of `cmd.Run()` (line 50) is correct -- it waits for process completion and collects all output. There are no resource leaks: stdout and stderr are captured via `bytes.Buffer` on the command struct, and `cmd.Run()` handles pipe cleanup internally. No goroutines or manual pipe management are needed.
-
----
-
-## Checklist
-
-**Code Quality:**
-- [x] All exported items have documentation (`FFmpegGenerator`, `NewFFmpegGenerator`, `NewFFmpegGeneratorWithPath`, `Generate`, `BuildArgs`, `ErrFFmpegNotFound`, `ErrFFmpegFailed`)
-- [x] Error handling follows patterns -- sentinel errors, `%w` wrapping, `errors.Is` compatibility
-- [x] Nil safety guards present -- `params.Validate()` called before use, ffmpeg path checked at construction time
-- [x] Table tests structured correctly -- `Test_BuildArgs_AllPresets`, `Test_deriveSeed_NonNegative`, `Test_fmtFloat_Cases` use proper table-driven patterns
-- [x] Code is readable and well-organized -- clear separation between command building and process execution
-- [x] Naming conventions followed -- `FFmpegGenerator`, `BuildArgs`, `ErrFFmpegNotFound` all follow Go conventions
-- [ ] No obvious logic errors or edge case gaps -- subtest naming issue in `TestFFmpegGenerator_AllPresets`
-
-**Pattern Consistency with NativeGenerator:**
-- [x] Same `Generate(ScreamParams) (io.Reader, error)` signature
-- [x] Same `params.Validate()` call at the top of Generate
-- [x] Same error wrapping pattern: `fmt.Errorf("invalid params: %w", err)`
-- [x] Same compile-time interface check: `var _ audio.AudioGenerator = (*FFmpegGenerator)(nil)`
-- [x] Same return type: `io.Reader` backed by `bytes.NewReader`
-
-**Test Coverage Assessment:**
-- [x] Constructor success and error paths tested
-- [x] All five layer types tested individually in `layerExpr` tests
-- [x] Zero-amplitude edge case covered
-- [x] Filter chain order verified
-- [x] Output byte count, alignment, and non-silence verified
-- [x] All named presets and randomized params exercised
-- [x] Determinism verified (same params produce same output)
-- [x] Invalid param error paths tested (duration, sample rate, channels, amplitude, crusher bits, limiter level)
-- [x] Bad binary path error path tested
-- [x] Benchmarks included for `BuildArgs`, `buildAevalsrcExpr`, `buildFilterChain`, and full `Generate`
+All changes are strictly within the approved Stage 3 scope. The `reflect` import and typed-nil normalization are cleanly removed. The `closer` field and `Close()` method are deleted with no residual references. The doc comment on `NewServiceWithDeps` properly documents the untyped-nil requirement. All remaining tests are preserved and structurally sound. No behavioral regressions detected.

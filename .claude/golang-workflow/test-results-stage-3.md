@@ -1,302 +1,196 @@
-# Test Execution Report - Stage 3 (FFmpeg Backend)
+# Test Execution Report — Stage 3: Remove reflect + dead closer
 
-**Date:** 2026-02-18  
-**Package:** `github.com/JamesPrial/go-scream/internal/audio/ffmpeg`  
-**Implementation files:**
-- `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/errors.go`
-- `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/command.go`
-- `/Users/jamesprial/code/go-scream/internal/audio/ffmpeg/generator.go`
+**Date:** 2026-02-19
+**Stage:** 3 — Remove reflect import and dead closer code
+**Implementation file:** `/Users/jamesprial/code/go-scream/internal/scream/service.go`
+**Test file:** `/Users/jamesprial/code/go-scream/internal/scream/service_test.go`
 
 ---
 
 ## Summary
 
-- **Verdict:** TESTS_PASS
-- **Tests Run:** 41 passed, 0 failed, 18 skipped (ffmpeg not on PATH)
-- **Coverage:** 90.6%
-- **Race Conditions:** None
-- **Vet Warnings:** None
-- **Linter:** 0 issues (golangci-lint)
+- **Verdict:** TESTS_FAIL / REGRESSION_DETECTED
+- **Tests Run:** All packages pass except `internal/scream` (panic/failure)
+- **Coverage:** `internal/scream` — not measurable due to panic; all other packages match baseline
+- **Race Conditions:** None (same panic failure observed under -race)
+- **Vet Warnings:** None (go vet clean)
+- **Lint Issues:** 0 (golangci-lint clean)
 
 ---
 
-## Test Results
+## Verdict
 
-```
-=== RUN   Test_BuildArgs_ContainsLavfiInput
---- PASS: Test_BuildArgs_ContainsLavfiInput (0.00s)
-=== RUN   Test_BuildArgs_ContainsAevalsrc
---- PASS: Test_BuildArgs_ContainsAevalsrc (0.00s)
-=== RUN   Test_BuildArgs_ContainsAudioFilter
---- PASS: Test_BuildArgs_ContainsAudioFilter (0.00s)
-=== RUN   Test_BuildArgs_ContainsOutputFormat
---- PASS: Test_BuildArgs_ContainsOutputFormat (0.00s)
-=== RUN   Test_BuildArgs_ContainsChannels
---- PASS: Test_BuildArgs_ContainsChannels (0.00s)
-=== RUN   Test_BuildArgs_ContainsSampleRate
---- PASS: Test_BuildArgs_ContainsSampleRate (0.00s)
-=== RUN   Test_BuildArgs_LastArgIsPipe
---- PASS: Test_BuildArgs_LastArgIsPipe (0.00s)
-=== RUN   Test_BuildArgs_ContainsDuration
---- PASS: Test_BuildArgs_ContainsDuration (0.00s)
-=== RUN   Test_BuildArgs_MonoParams
---- PASS: Test_BuildArgs_MonoParams (0.00s)
-=== RUN   Test_BuildArgs_DifferentSampleRate
---- PASS: Test_BuildArgs_DifferentSampleRate (0.00s)
-=== RUN   Test_buildAevalsrcExpr_ContainsSin
---- PASS: Test_buildAevalsrcExpr_ContainsSin (0.00s)
-=== RUN   Test_buildAevalsrcExpr_ContainsRandom
---- PASS: Test_buildAevalsrcExpr_ContainsRandom (0.00s)
-=== RUN   Test_buildAevalsrcExpr_ContainsPI
---- PASS: Test_buildAevalsrcExpr_ContainsPI (0.00s)
-=== RUN   Test_buildAevalsrcExpr_NonEmptyForAllPresets
-=== RUN   Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_1
-=== RUN   Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_42
-=== RUN   Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_100
-=== RUN   Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_9999
-=== RUN   Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_12345
-=== RUN   Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_99999
---- PASS: Test_buildAevalsrcExpr_NonEmptyForAllPresets (0.00s)
-    --- PASS: Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_1 (0.00s)
-    --- PASS: Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_42 (0.00s)
-    --- PASS: Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_100 (0.00s)
-    --- PASS: Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_9999 (0.00s)
-    --- PASS: Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_12345 (0.00s)
-    --- PASS: Test_buildAevalsrcExpr_NonEmptyForAllPresets/seed_99999 (0.00s)
-=== RUN   Test_buildAevalsrcExpr_ZeroAmplitudeLayer
---- PASS: Test_buildAevalsrcExpr_ZeroAmplitudeLayer (0.00s)
-=== RUN   Test_buildFilterChain_ContainsHighpass
---- PASS: Test_buildFilterChain_ContainsHighpass (0.00s)
-=== RUN   Test_buildFilterChain_ContainsLowpass
---- PASS: Test_buildFilterChain_ContainsLowpass (0.00s)
-=== RUN   Test_buildFilterChain_ContainsAcrusher
---- PASS: Test_buildFilterChain_ContainsAcrusher (0.00s)
-=== RUN   Test_buildFilterChain_ContainsAcompressor
---- PASS: Test_buildFilterChain_ContainsAcompressor (0.00s)
-=== RUN   Test_buildFilterChain_ContainsVolume
---- PASS: Test_buildFilterChain_ContainsVolume (0.00s)
-=== RUN   Test_buildFilterChain_ContainsAlimiter
---- PASS: Test_buildFilterChain_ContainsAlimiter (0.00s)
-=== RUN   Test_buildFilterChain_FilterOrder
---- PASS: Test_buildFilterChain_FilterOrder (0.00s)
-=== RUN   Test_layerExpr_PrimaryScream
---- PASS: Test_layerExpr_PrimaryScream (0.00s)
-=== RUN   Test_layerExpr_HarmonicSweep
---- PASS: Test_layerExpr_HarmonicSweep (0.00s)
-=== RUN   Test_layerExpr_HighShriek
---- PASS: Test_layerExpr_HighShriek (0.00s)
-=== RUN   Test_layerExpr_NoiseBurst
---- PASS: Test_layerExpr_NoiseBurst (0.00s)
-=== RUN   Test_layerExpr_BackgroundNoise
---- PASS: Test_layerExpr_BackgroundNoise (0.00s)
-=== RUN   Test_layerExpr_ZeroAmplitude
---- PASS: Test_layerExpr_ZeroAmplitude (0.00s)
-=== RUN   Test_fmtFloat_Cases
-=== RUN   Test_fmtFloat_Cases/integer_value
-=== RUN   Test_fmtFloat_Cases/fractional_value
-=== RUN   Test_fmtFloat_Cases/small_value
-=== RUN   Test_fmtFloat_Cases/negative_value
-=== RUN   Test_fmtFloat_Cases/zero
-=== RUN   Test_fmtFloat_Cases/large_value
---- PASS: Test_fmtFloat_Cases (0.00s)
-    --- PASS: Test_fmtFloat_Cases/integer_value (0.00s)
-    --- PASS: Test_fmtFloat_Cases/fractional_value (0.00s)
-    --- PASS: Test_fmtFloat_Cases/small_value (0.00s)
-    --- PASS: Test_fmtFloat_Cases/negative_value (0.00s)
-    --- PASS: Test_fmtFloat_Cases/zero (0.00s)
-    --- PASS: Test_fmtFloat_Cases/large_value (0.00s)
-=== RUN   Test_fmtFloat_ConsistentPrecision
---- PASS: Test_fmtFloat_ConsistentPrecision (0.00s)
-=== RUN   Test_fmtFloat_NegativeValue
---- PASS: Test_fmtFloat_NegativeValue (0.00s)
-=== RUN   Test_deriveSeed_DifferentIndexes
---- PASS: Test_deriveSeed_DifferentIndexes (0.00s)
-=== RUN   Test_deriveSeed_DifferentGlobalSeeds
---- PASS: Test_deriveSeed_DifferentGlobalSeeds (0.00s)
-=== RUN   Test_deriveSeed_Deterministic
---- PASS: Test_deriveSeed_Deterministic (0.00s)
-=== RUN   Test_deriveSeed_NonNegative
-=== RUN   Test_deriveSeed_NonNegative/positive_seeds
-=== RUN   Test_deriveSeed_NonNegative/zero_global
-=== RUN   Test_deriveSeed_NonNegative/zero_layer
-=== RUN   Test_deriveSeed_NonNegative/large_seeds
-=== RUN   Test_deriveSeed_NonNegative/negative_global
-=== RUN   Test_deriveSeed_NonNegative/negative_layer
-=== RUN   Test_deriveSeed_NonNegative/both_negative
---- PASS: Test_deriveSeed_NonNegative (0.00s)
-    --- PASS: Test_deriveSeed_NonNegative/positive_seeds (0.00s)
-    --- PASS: Test_deriveSeed_NonNegative/zero_global (0.00s)
-    --- PASS: Test_deriveSeed_NonNegative/zero_layer (0.00s)
-    --- PASS: Test_deriveSeed_NonNegative/large_seeds (0.00s)
-    --- PASS: Test_deriveSeed_NonNegative/negative_global (0.00s)
-    --- PASS: Test_deriveSeed_NonNegative/negative_layer (0.00s)
-    --- PASS: Test_deriveSeed_NonNegative/both_negative (0.00s)
-=== RUN   Test_deriveSeed_DifferentLayerSeeds
---- PASS: Test_deriveSeed_DifferentLayerSeeds (0.00s)
-=== RUN   Test_BuildArgs_AllPresets
-=== RUN   Test_BuildArgs_AllPresets/classic
-=== RUN   Test_BuildArgs_AllPresets/whisper
-=== RUN   Test_BuildArgs_AllPresets/death-metal
-=== RUN   Test_BuildArgs_AllPresets/glitch
-=== RUN   Test_BuildArgs_AllPresets/banshee
-=== RUN   Test_BuildArgs_AllPresets/robot
---- PASS: Test_BuildArgs_AllPresets (0.00s)
-    --- PASS: Test_BuildArgs_AllPresets/classic (0.00s)
-    --- PASS: Test_BuildArgs_AllPresets/whisper (0.00s)
-    --- PASS: Test_BuildArgs_AllPresets/death-metal (0.00s)
-    --- PASS: Test_BuildArgs_AllPresets/glitch (0.00s)
-    --- PASS: Test_BuildArgs_AllPresets/banshee (0.00s)
-    --- PASS: Test_BuildArgs_AllPresets/robot (0.00s)
-=== RUN   Test_BuildArgs_WithRandomizedParams
-=== RUN   Test_BuildArgs_WithRandomizedParams/seed_1
-=== RUN   Test_BuildArgs_WithRandomizedParams/seed_42
-=== RUN   Test_BuildArgs_WithRandomizedParams/seed_100
-=== RUN   Test_BuildArgs_WithRandomizedParams/seed_9999
-=== RUN   Test_BuildArgs_WithRandomizedParams/seed_12345
---- PASS: Test_BuildArgs_WithRandomizedParams (0.00s)
-    --- PASS: Test_BuildArgs_WithRandomizedParams/seed_1 (0.00s)
-    --- PASS: Test_BuildArgs_WithRandomizedParams/seed_42 (0.00s)
-    --- PASS: Test_BuildArgs_WithRandomizedParams/seed_100 (0.00s)
-    --- PASS: Test_BuildArgs_WithRandomizedParams/seed_9999 (0.00s)
-    --- PASS: Test_BuildArgs_WithRandomizedParams/seed_12345 (0.00s)
-=== RUN   TestNewFFmpegGenerator_Success
-    generator_test.go:54: ffmpeg not available
---- SKIP: TestNewFFmpegGenerator_Success (0.00s)
-=== RUN   TestNewFFmpegGeneratorWithPath_NotNil
---- PASS: TestNewFFmpegGeneratorWithPath_NotNil (0.00s)
-=== RUN   TestNewFFmpegGenerator_NoFFmpegOnPath
---- PASS: TestNewFFmpegGenerator_NoFFmpegOnPath (0.00s)
-=== RUN   TestFFmpegGenerator_CorrectByteCount
-    generator_test.go:91: ffmpeg not available
---- SKIP: TestFFmpegGenerator_CorrectByteCount (0.00s)
-=== RUN   TestFFmpegGenerator_NonSilent
-    generator_test.go:117: ffmpeg not available
---- SKIP: TestFFmpegGenerator_NonSilent (0.00s)
-=== RUN   TestFFmpegGenerator_AllPresets
-    generator_test.go:148: ffmpeg not available
---- SKIP: TestFFmpegGenerator_AllPresets (0.00s)
-=== RUN   TestFFmpegGenerator_AllNamedPresets
-    generator_test.go:181: ffmpeg not available
---- SKIP: TestFFmpegGenerator_AllNamedPresets (0.00s)
-=== RUN   TestFFmpegGenerator_InvalidDuration
-    generator_test.go:217: ffmpeg not available
---- SKIP: TestFFmpegGenerator_InvalidDuration (0.00s)
-=== RUN   TestFFmpegGenerator_NegativeDuration
-    generator_test.go:237: ffmpeg not available
---- SKIP: TestFFmpegGenerator_NegativeDuration (0.00s)
-=== RUN   TestFFmpegGenerator_InvalidSampleRate
-    generator_test.go:257: ffmpeg not available
---- SKIP: TestFFmpegGenerator_InvalidSampleRate (0.00s)
-=== RUN   TestFFmpegGenerator_NegativeSampleRate
-    generator_test.go:277: ffmpeg not available
---- SKIP: TestFFmpegGenerator_NegativeSampleRate (0.00s)
-=== RUN   TestFFmpegGenerator_InvalidChannels
-    generator_test.go:297: ffmpeg not available
---- SKIP: TestFFmpegGenerator_InvalidChannels (0.00s)
-=== RUN   TestFFmpegGenerator_ZeroChannels
-    generator_test.go:317: ffmpeg not available
---- SKIP: TestFFmpegGenerator_ZeroChannels (0.00s)
-=== RUN   TestFFmpegGenerator_BadBinaryPath
---- PASS: TestFFmpegGenerator_BadBinaryPath (0.00s)
-=== RUN   TestFFmpegGenerator_InvalidAmplitude
-    generator_test.go:350: ffmpeg not available
---- SKIP: TestFFmpegGenerator_InvalidAmplitude (0.00s)
-=== RUN   TestFFmpegGenerator_InvalidCrusherBits
-    generator_test.go:370: ffmpeg not available
---- SKIP: TestFFmpegGenerator_InvalidCrusherBits (0.00s)
-=== RUN   TestFFmpegGenerator_InvalidLimiterLevel
-    generator_test.go:390: ffmpeg not available
---- SKIP: TestFFmpegGenerator_InvalidLimiterLevel (0.00s)
-=== RUN   TestFFmpegGenerator_EvenByteCount
-    generator_test.go:412: ffmpeg not available
---- SKIP: TestFFmpegGenerator_EvenByteCount (0.00s)
-=== RUN   TestFFmpegGenerator_StereoAligned
-    generator_test.go:436: ffmpeg not available
---- SKIP: TestFFmpegGenerator_StereoAligned (0.00s)
-=== RUN   TestFFmpegGenerator_MonoOutput
-    generator_test.go:462: ffmpeg not available
---- SKIP: TestFFmpegGenerator_MonoOutput (0.00s)
-=== RUN   TestFFmpegGenerator_DeterministicOutput
-    generator_test.go:491: ffmpeg not available
---- SKIP: TestFFmpegGenerator_DeterministicOutput (0.00s)
-PASS
-ok      github.com/JamesPrial/go-scream/internal/audio/ffmpeg   0.325s
-```
+**TESTS_FAIL / REGRESSION_DETECTED**
 
-### Skip Explanation
-
-18 integration tests were skipped because `ffmpeg` is not installed on this system's PATH. All skipped tests use the `skipIfNoFFmpeg(t)` helper which correctly calls `t.Skip()`. This is expected behaviour - the tests are correctly written to degrade gracefully when the runtime dependency is absent. All 41 non-integration tests (command building, expression building, filter chain, seed derivation, float formatting) executed and passed.
+One test regressed. The test `Test_Play_Validation/nil_player_returns_ErrNoPlayer` panics with a nil pointer dereference. This is a direct regression caused by Stage 3 removing the `reflect`-based typed-nil detection without an equivalent replacement.
 
 ---
 
-## Race Detection
+## Failing Test
 
+### `Test_Play_Validation/nil_player_returns_ErrNoPlayer`
+
+**File:** `/Users/jamesprial/code/go-scream/internal/scream/service_test.go`, lines 347–370
+
+**Panic output:**
 ```
-ok      github.com/JamesPrial/go-scream/internal/audio/ffmpeg   1.354s
+--- FAIL: Test_Play_Validation (0.00s)
+    --- FAIL: Test_Play_Validation/nil_player_returns_ErrNoPlayer (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]
+[signal SIGSEGV: segmentation violation code=0x2 addr=0x0 pc=0x...]
+
+goroutine 33 [running]:
+github.com/JamesPrial/go-scream/internal/scream.(*mockPlayer).Play(0x..., ...)
+        /Users/jamesprial/code/go-scream/internal/scream/service_test.go:143 +0x20
+github.com/JamesPrial/go-scream/internal/scream.(*Service).Play(0x..., ...)
+        /Users/jamesprial/code/go-scream/internal/scream/service.go:81 +0x1fc
+github.com/JamesPrial/go-scream/internal/scream.Test_Play_Validation.func1(...)
+        /Users/jamesprial/code/go-scream/internal/scream/service_test.go:363 +0x14c
 ```
 
-No races detected.
+### Root Cause Analysis
+
+The test passes a typed `(*mockPlayer)(nil)` as the `player` argument:
+
+```go
+// service_test.go lines 347–352
+{
+    name:      "nil player returns ErrNoPlayer",
+    guildID:   "guild-123",
+    channelID: "chan-456",
+    player:    nil,   // typed nil — *mockPlayer(nil) stored as discord.VoicePlayer interface
+    wantErr:   ErrNoPlayer,
+},
+```
+
+When this typed-nil `*mockPlayer` value is stored as a `discord.VoicePlayer` interface value in `NewServiceWithDeps`, the interface value is **not** a nil interface — it holds a non-nil interface descriptor with a nil concrete pointer.
+
+The guard in `service.go` line 51:
+
+```go
+if !s.cfg.DryRun && s.player == nil {
+    return ErrNoPlayer
+}
+```
+
+...evaluates to `false` because a typed-nil stored in an interface does NOT compare equal to `nil`. Execution proceeds to line 81:
+
+```go
+playErr := s.player.Play(ctx, guildID, channelID, frameCh)
+```
+
+This dispatches to `(*mockPlayer).Play` on a nil `*mockPlayer` receiver, dereferencing the nil pointer at `service_test.go:143` (`m.mu.Lock()`).
+
+**Previously:** Stage 2 or an earlier version used `reflect.ValueOf(s.player).IsNil()` (or equivalent reflect logic) to catch typed-nil interface values. Stage 3 removed `reflect` but did not replace the typed-nil guard.
+
+**This is NOT one of the 4 intentionally removed Close tests.** The 4 expected removals are:
+- `Test_Close_WithCloser`
+- `Test_Close_WithCloserError`
+- `Test_Close_NilCloser`
+- `Test_Close_CalledTwice_NoPanic`
+
+`Test_Play_Validation/nil_player_returns_ErrNoPlayer` was in the baseline and must continue to pass.
 
 ---
 
-## Static Analysis
+## Reflect Import Check
 
-```
-(no output)
-```
+Confirmed: `reflect` is **not present** in `/Users/jamesprial/code/go-scream/internal/scream/service.go`. Stage 3 successfully removed the import.
 
-`go vet ./internal/audio/ffmpeg/...` produced no warnings.
+---
+
+## Test Results by Package
+
+| Package | Result |
+|---------|--------|
+| `cmd/scream` | no test files |
+| `cmd/skill` | PASS (cached) |
+| `internal/audio` | PASS (cached) |
+| `internal/audio/ffmpeg` | PASS |
+| `internal/audio/native` | PASS |
+| `internal/config` | PASS (cached) |
+| `internal/discord` | PASS |
+| `internal/encoding` | PASS |
+| `internal/scream` | **FAIL** — panic in `Test_Play_Validation/nil_player_returns_ErrNoPlayer` |
+| `pkg/version` | PASS (cached) |
 
 ---
 
 ## Coverage Details
 
-```
-ok      github.com/JamesPrial/go-scream/internal/audio/ffmpeg   0.304s  coverage: 90.6% of statements
-```
+All packages that passed show coverage identical to baseline:
 
-Coverage: **90.6%** - well above the 70% threshold.
+| Package | Coverage |
+|---------|----------|
+| `cmd/scream` | 0.0% (no test files) |
+| `cmd/skill` | 21.7% |
+| `internal/audio` | 87.5% |
+| `internal/audio/ffmpeg` | 90.6% |
+| `internal/audio/native` | 100.0% |
+| `internal/config` | 97.6% |
+| `internal/discord` | 64.1% |
+| `internal/encoding` | 85.7% |
+| `internal/scream` | not measured (panic) |
+| `pkg/version` | 100.0% |
 
-The uncovered statements are integration paths that require a live `ffmpeg` binary (the `NewFFmpegGenerator` success path and the `Generate` execution path when ffmpeg is available). These are intentionally skipped, not untested by design.
+Baseline for `internal/scream` was 95.0%.
+
+---
+
+## Race Detection
+
+`go test -race ./...` — same panic in `Test_Play_Validation/nil_player_returns_ErrNoPlayer`. No separate race conditions detected. Pre-existing macOS linker warning (`ld: warning: LC_DYSYMTAB malformed`) still present and unchanged from baseline.
+
+---
+
+## Static Analysis
+
+`go vet ./...` — **No warnings.** Clean.
 
 ---
 
 ## Linter Output
 
-```
-0 issues.
-```
-
-`golangci-lint` reported 0 issues.
+`golangci-lint run` — **0 issues.**
 
 ---
 
-## Regression Tests (Prior Stages)
+## Issues to Address
 
-All prior-stage packages continue to pass:
+### Issue 1 — Typed-nil guard broken after reflect removal (REGRESSION)
 
+**Severity:** Critical — causes a panic, not just a test failure.
+
+**File:** `/Users/jamesprial/code/go-scream/internal/scream/service.go`, line 51
+
+**Problem:** `s.player == nil` does not catch a typed-nil `discord.VoicePlayer` interface value. Any caller passing a `(*ConcreteType)(nil)` as the player will bypass the guard and panic at the dispatch site on line 81.
+
+**Fix options:**
+
+Option A — Document that callers MUST pass untyped nil (the constructor comment already says this), and update the test to pass an untyped nil:
+```go
+// In the test table, the nil player case must use an untyped nil:
+// player: nil  becomes a typed *mockPlayer nil when the field type is *mockPlayer.
+// Cast to the interface explicitly, or restructure so the table field is discord.VoicePlayer.
 ```
-ok      github.com/JamesPrial/go-scream/internal/audio          0.487s
-ok      github.com/JamesPrial/go-scream/internal/audio/ffmpeg   0.245s
-ok      github.com/JamesPrial/go-scream/internal/audio/native   1.112s
-ok      github.com/JamesPrial/go-scream/internal/encoding       0.510s
-```
+Change the test struct field from `player *mockPlayer` to `player discord.VoicePlayer` and keep `player: nil` — this would store a true untyped nil interface.
 
-No regressions introduced.
+Option B — Re-add typed-nil protection using `reflect` (contradicts Stage 3 goal).
+
+Option C — Change `NewServiceWithDeps` to accept a concrete wrapper type or a functional option instead of a raw interface, so the nil interface issue cannot arise by construction.
+
+**Recommended fix:** Option A. The test table field `player *mockPlayer` causes the typed-nil problem. Changing it to `player discord.VoicePlayer` would make `nil` store as a true nil interface and the existing `s.player == nil` guard would work correctly — no reflect needed.
 
 ---
 
-## Pass Criteria Checklist
+## Regression Summary vs Baseline
 
-- [x] All `go test` commands exit with status 0
-- [x] No race conditions detected by `-race`
-- [x] No warnings from `go vet`
-- [x] Coverage 90.6% (threshold: >70%)
-- [x] No critical linter errors (golangci-lint: 0 issues)
-- [x] All prior-stage packages pass regression
+| Test | Baseline | Stage 3 | Classification |
+|------|----------|---------|----------------|
+| `Test_Close_WithCloser` | PASS | removed | EXPECTED (intentional Stage 3 removal) |
+| `Test_Close_WithCloserError` | PASS | removed | EXPECTED (intentional Stage 3 removal) |
+| `Test_Close_NilCloser` | PASS | removed | EXPECTED (intentional Stage 3 removal) |
+| `Test_Close_CalledTwice_NoPanic` | PASS | removed | EXPECTED (intentional Stage 3 removal) |
+| `Test_Play_Validation/nil_player_returns_ErrNoPlayer` | PASS | **PANIC** | **REGRESSION** |
 
----
-
-## TESTS_PASS
-
-All checks pass. Coverage: **90.6%**. 41 tests run, 0 failed, 18 skipped (ffmpeg binary not present in test environment - correct skip behaviour via `t.Skip()`).
+All other ~200 tests that were passing in the baseline continue to pass.

@@ -23,3 +23,6 @@ coverage.txt
 # Build
 /bin/
 /dist/
+
+# Firebase
+firebase-debug.log

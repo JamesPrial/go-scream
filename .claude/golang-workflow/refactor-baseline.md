@@ -1,14 +1,15 @@
-# Test Results — Stage 1: Remove //nolint Directives
+# Refactor Baseline Snapshot
 
 **Date:** 2026-02-19
-**Implementation file:** `/Users/jamesprial/code/go-scream/internal/discord/player.go`
-**Baseline ref:** `.claude/golang-workflow/refactor-baseline.md` (commit 008595f)
+**Commit:** 008595f Initial commit: go-scream audio generation tool
+**Branch:** main
 
 ---
 
-## VERDICT: TESTS_PASS
+## VERDICT: BASELINE_CLEAN
 
-No regressions from baseline. All checks pass. No race conditions. No vet warnings. No lint issues.
+All tests pass. No race conditions. No vet warnings. No lint issues.
+The only note is `internal/discord` coverage is 64.1% (pre-existing, not a failure).
 
 ---
 
@@ -16,25 +17,11 @@ No regressions from baseline. All checks pass. No race conditions. No vet warnin
 
 | Check | Result |
 |-------|--------|
-| `go test -v ./...` | ALL PASS (0 failures) |
-| `go test -race ./...` | NO RACES (3 pre-existing macOS `ld` LC_DYSYMTAB linker warnings — same as baseline) |
+| `go test ./...` | ALL PASS |
+| `go test -race ./...` | NO RACES (3 linker warnings: macOS `ld` LC_DYSYMTAB — pre-existing OS-level warning, not a Go issue) |
 | `go vet ./...` | NO WARNINGS |
 | `go test -cover ./...` | See coverage table below |
 | `golangci-lint run` | 0 issues |
-
----
-
-## Regression Analysis
-
-| Test | Baseline | Stage 1 | Classification |
-|------|----------|---------|----------------|
-| All `internal/discord` tests | PASS | PASS | NO CHANGE |
-| All other package tests | PASS | PASS | NO CHANGE |
-| ffmpeg-dependent tests (18) | SKIP | SKIP | NO CHANGE |
-
-**Regressions detected:** 0
-**New failures:** 0
-**Pre-existing failures:** 0
 
 ---
 
@@ -190,7 +177,39 @@ No regressions from baseline. All checks pass. No race conditions. No vet warnin
 - PASS: `TestOscillator_Sin_KnownValues`
 
 ### Package: `github.com/JamesPrial/go-scream/internal/config`
-- PASS: All 35 test functions/subtests (identical to baseline)
+- PASS: `TestDefault_ReturnsExpectedValues`
+- PASS: `TestDefault_BackendConstant`
+- PASS: `TestDefault_FormatConstant`
+- PASS: `TestMerge_ZeroOverlayPreservesBase`
+- PASS: `TestMerge_NonZeroOverlayWins`
+- PASS: `TestMerge_PartialOverlay`
+- PASS: `TestMerge_FieldTypes` (subtests: string_field:_Token_override, BackendType_field_override, FormatType_field_override, Duration_field_override, float64_field:_Volume_override, bool_field:_DryRun_override_true, bool_field:_false_overlay_preserves_base_true)
+- PASS: `TestMerge_BothZero`
+- PASS: `TestMerge_DoesNotMutateInputs`
+- PASS: `TestLoad_ValidYAML`
+- PASS: `TestLoad_PartialYAML`
+- PASS: `TestLoad_NonexistentFile`
+- PASS: `TestLoad_InvalidYAML`
+- PASS: `TestLoad_EmptyFile`
+- PASS: `TestLoad_UnknownFieldsSilentlyIgnored`
+- PASS: `TestLoad_DurationFormats` (subtests: Go_duration_string_3s, Go_duration_string_500ms, Go_duration_string_1m30s, invalid_duration_string, bare_integer_without_unit)
+- PASS: `TestApplyEnv_AllVariables`
+- PASS: `TestApplyEnv_EmptyEnvVarsUnset`
+- PASS: `TestApplyEnv_InvalidDurationSilentlyIgnored`
+- PASS: `TestApplyEnv_InvalidVolumeSilentlyIgnored`
+- PASS: `TestApplyEnv_InvalidVerboseSilentlyIgnored`
+- PASS: `TestApplyEnv_OverridesExistingValues`
+- PASS: `TestApplyEnv_IndividualVariables` (subtests: DISCORD_TOKEN, SCREAM_GUILD_ID, SCREAM_BACKEND_native, SCREAM_PRESET, SCREAM_DURATION, SCREAM_VOLUME, SCREAM_FORMAT_ogg, SCREAM_VERBOSE_true)
+- PASS: `TestApplyEnv_VerboseVariants` (subtests: true, 1, TRUE, True, false, 0, FALSE)
+- PASS: `TestValidate_DefaultConfigPasses`
+- PASS: `TestValidate_Backend` (subtests: native_is_valid, ffmpeg_is_valid, empty_is_invalid, unknown_backend_is_invalid, case_sensitive:_Native_is_invalid, case_sensitive:_FFMPEG_is_invalid)
+- PASS: `TestValidate_Preset` (subtests: classic_is_valid, whisper_is_valid, death-metal_is_valid, glitch_is_valid, banshee_is_valid, robot_is_valid, empty_is_valid_(no_preset_selected), unknown_preset_is_invalid, case_sensitive:_Classic_is_invalid)
+- PASS: `TestValidate_Duration` (subtests: positive_duration_is_valid, 1ms_is_valid, zero_duration_is_invalid, negative_duration_is_invalid)
+- PASS: `TestValidate_Volume` (subtests: volume_1.0_is_valid, volume_0.0_is_valid, volume_0.5_is_valid, volume_above_1.0_is_invalid, volume_below_0.0_is_invalid, volume_way_above_range)
+- PASS: `TestValidate_Format` (subtests: ogg_is_valid, wav_is_valid, empty_format_is_invalid, mp3_is_invalid, case_sensitive:_OGG_is_invalid, case_sensitive:_WAV_is_invalid)
+- PASS: `TestValidate_MultipleInvalidFields`
+- PASS: `TestValidate_SentinelErrorsExist` (subtests: ErrConfigNotFound, ErrConfigParse, ErrInvalidBackend, ErrInvalidPreset, ErrInvalidDuration, ErrInvalidVolume, ErrInvalidFormat)
+- PASS: `TestValidate_ErrorWrapping`
 
 ### Package: `github.com/JamesPrial/go-scream/internal/discord`
 - PASS: `TestFindPopulatedChannel_OneUser`
@@ -224,13 +243,111 @@ No regressions from baseline. All checks pass. No race conditions. No vet warnin
 - PASS: `TestDiscordPlayer_Play_ValidationErrors` (subtests: empty_guild_ID, empty_channel_ID, nil_frame_channel)
 
 ### Package: `github.com/JamesPrial/go-scream/internal/encoding`
-- PASS: All tests (identical to baseline)
+- PASS: `TestConstants` (subtests: OpusFrameSamples, MaxOpusFrameBytes, OpusBitrate)
+- PASS: `TestPcmBytesToInt16_KnownValues` (subtests: zero, positive_one, negative_one, 256_(0x0100), multiple_samples, little-endian_0x0201_=_513, 0x80FF_=_-32513_in_signed)
+- PASS: `TestPcmBytesToInt16_EmptyInput`
+- PASS: `TestPcmBytesToInt16_RoundTrip`
+- PASS: `TestPcmBytesToInt16_MaxValues` (subtests: int16_max_(32767), int16_min_(-32768))
+- PASS: `TestOGGEncoder_ImplementsFileEncoder`
+- PASS: `TestOGGEncoder_StartsWithOggS`
+- PASS: `TestOGGEncoder_NonEmptyOutput`
+- PASS: `TestOGGEncoder_InvalidSampleRate` (subtests: zero, negative)
+- PASS: `TestOGGEncoder_InvalidChannels` (subtests: zero, three, negative)
+- PASS: `TestOGGEncoder_OpusError`
+- PASS: `TestOGGEncoder_EmptyFrames`
+- PASS: `TestOGGEncoder_WriterError`
+- PASS: `TestNewOGGEncoder_NotNil`
+- PASS: `TestNewOGGEncoderWithOpus_NotNil`
+- PASS: `TestOGGEncoder_VariousFrameCounts` (subtests: 1_frame, 10_frames, 50_frames, 150_frames_(3s))
+- PASS: `TestGopusFrameEncoder_ImplementsInterface`
+- PASS: `TestGopusFrameEncoder_FrameCount_3s`
+- PASS: `TestGopusFrameEncoder_FrameCount_1Frame`
+- PASS: `TestGopusFrameEncoder_PartialFrame`
+- PASS: `TestGopusFrameEncoder_SingleSample`
+- PASS: `TestGopusFrameEncoder_EmptyInput`
+- PASS: `TestGopusFrameEncoder_FrameSizeBounds`
+- PASS: `TestGopusFrameEncoder_MonoEncoding`
+- PASS: `TestGopusFrameEncoder_InvalidSampleRate` (subtests: zero, 22050_(unsupported_by_opus), negative)
+- PASS: `TestGopusFrameEncoder_InvalidChannels` (subtests: zero, three, negative)
+- PASS: `TestGopusFrameEncoder_ChannelsClosed`
+- PASS: `TestGopusFrameEncoder_ChannelsClosed_OnError`
+- PASS: `TestNewGopusFrameEncoder_NotNil`
+- PASS: `TestNewGopusFrameEncoderWithBitrate_NotNil`
+- PASS: `TestWAVEncoder_ImplementsFileEncoder`
+- PASS: `TestWAVEncoder_HeaderByteLayout`
+- PASS: `TestWAVEncoder_OutputSize` (subtests: 1_sample_stereo, 100_samples_stereo, 48000_samples_mono, 1000_samples_stereo_44100, 0_samples)
+- PASS: `TestWAVEncoder_Stereo48kHz`
+- PASS: `TestWAVEncoder_Mono44100`
+- PASS: `TestWAVEncoder_EmptyInput`
+- PASS: `TestWAVEncoder_SingleSample`
+- PASS: `TestWAVEncoder_PCMDataPreserved`
+- PASS: `TestWAVEncoder_InvalidSampleRate` (subtests: zero, negative, large_negative)
+- PASS: `TestWAVEncoder_InvalidChannels` (subtests: zero, negative, three, large)
+- PASS: `TestWAVEncoder_WriterError`
+- PASS: `TestWAVEncoder_HeaderFields_TableDriven` (subtests: 48kHz_stereo_1s, 44100Hz_mono_0.5s, 48kHz_mono_20ms, 22050Hz_stereo_1s)
 
 ### Package: `github.com/JamesPrial/go-scream/internal/scream`
-- PASS: All tests (identical to baseline)
+- PASS: `Test_NewServiceWithDeps_ReturnsNonNil`
+- PASS: `Test_NewServiceWithDeps_NilPlayer`
+- PASS: `Test_NewServiceWithDeps_StoresConfig`
+- PASS: `Test_Play_HappyPath`
+- PASS: `Test_Play_UsesPresetParams`
+- PASS: `Test_Play_PassesGuildAndChannelToPlayer`
+- PASS: `Test_Play_Validation` (subtests: empty_guild_ID_returns_error, nil_player_returns_ErrNoPlayer)
+- PASS: `Test_Play_GeneratorError`
+- PASS: `Test_Play_PlayerError`
+- PASS: `Test_Play_DryRun_SkipsPlayer`
+- PASS: `Test_Play_DryRun_NilPlayerOK`
+- PASS: `Test_Play_ContextCancelled`
+- PASS: `Test_Play_UnknownPreset`
+- PASS: `Test_Play_MultiplePresets` (subtests: classic, whisper, death-metal, glitch, banshee, robot)
+- PASS: `Test_Generate_HappyPath_OGG`
+- PASS: `Test_Generate_HappyPath_WAV`
+- PASS: `Test_Generate_NoTokenRequired`
+- PASS: `Test_Generate_GeneratorError`
+- PASS: `Test_Generate_FileEncoderError`
+- PASS: `Test_Generate_UnknownPreset`
+- PASS: `Test_Generate_PlayerNotInvoked`
+- PASS: `Test_Close_WithCloser`
+- PASS: `Test_Close_WithCloserError`
+- PASS: `T_Close_NilCloser`
+- PASS: `Test_Close_CalledTwice_NoPanic`
+- PASS: `Test_ListPresets_ReturnsAllPresets`
+- PASS: `Test_ListPresets_ContainsExpectedNames`
+- PASS: `Test_ListPresets_NoDuplicates`
+- PASS: `Test_ListPresets_Deterministic`
+- PASS: `Test_ResolveParams_PresetOverridesDuration`
+- PASS: `Test_ResolveParams_EmptyPresetUsesRandomize`
+- PASS: `Test_SentinelErrors_Exist` (subtests: ErrNoPlayer, ErrUnknownPreset, ErrGenerateFailed, ErrEncodeFailed, ErrPlayFailed)
+- PASS: `Test_Play_GeneratorError_WrapsOriginal`
+- PASS: `Test_Play_PlayerError_WrapsOriginal`
+- PASS: `Test_Generate_GeneratorError_WrapsOriginal`
+- PASS: `Test_Generate_EncoderError_WrapsOriginal`
 
 ### Package: `github.com/JamesPrial/go-scream/pkg/version`
-- PASS: All tests (identical to baseline)
+- PASS: `TestDefaultVersion`
+- PASS: `TestDefaultCommit`
+- PASS: `TestDefaultDate`
+- PASS: `TestString_DefaultValues`
+- PASS: `TestString_Format` (subtests: default_values, release_version, prerelease_version, empty_strings)
+- PASS: `TestString_MatchesExpectedFormat`
+
+---
+
+## Coverage Per Package
+
+| Package | Coverage |
+|---------|----------|
+| `cmd/scream` | 0.0% (no test files) |
+| `cmd/skill` | 21.7% |
+| `internal/audio` | 87.5% |
+| `internal/audio/ffmpeg` | 90.6% |
+| `internal/audio/native` | 100.0% |
+| `internal/config` | 97.6% |
+| `internal/discord` | 64.1% |
+| `internal/encoding` | 85.7% |
+| `internal/scream` | 95.0% |
+| `pkg/version` | 100.0% |
 
 ---
 
@@ -238,77 +355,60 @@ No regressions from baseline. All checks pass. No race conditions. No vet warnin
 
 No races detected.
 
-Same three macOS linker (`ld`) warnings as baseline (pre-existing OS-level artifact, not a Go race):
+Three macOS linker (`ld`) warnings appeared during race-instrumented binary linking:
 ```
 ld: warning: '/private/var/folders/.../000012.o' has malformed LC_DYSYMTAB,
     expected 98 undefined symbols to start at index 1626, found 95 undefined
     symbols starting at index 1626
 ```
-Appears for `internal/encoding`, `cmd/skill`, and `internal/scream` only when
-building race-instrumented binaries. Pre-existing — not introduced by this stage.
+This is a known macOS SDK/toolchain artifact (not a Go race condition). It appears for packages `internal/encoding`, `cmd/skill`, and `internal/scream` only when building race-instrumented binaries. All tests still pass. This is pre-existing and not introduced by any refactoring.
 
 ---
 
-## Static Analysis
-
-```
-go vet ./...  →  (no output, exit 0)
-```
+## Static Analysis (`go vet`)
 
 No warnings. Clean.
 
 ---
 
-## Coverage Details
+## Linter (`golangci-lint`)
 
-| Package | Baseline | Stage 1 | Delta |
-|---------|----------|---------|-------|
-| `cmd/scream` | 0.0% | 0.0% | 0 |
-| `cmd/skill` | 21.7% | 21.7% | 0 |
-| `internal/audio` | 87.5% | 87.5% | 0 |
-| `internal/audio/ffmpeg` | 90.6% | 90.6% | 0 |
-| `internal/audio/native` | 100.0% | 100.0% | 0 |
-| `internal/config` | 97.6% | 97.6% | 0 |
-| `internal/discord` | 64.1% | 64.1% | 0 (pre-existing, not a failure) |
-| `internal/encoding` | 85.7% | 85.7% | 0 |
-| `internal/scream` | 95.0% | 95.0% | 0 |
-| `pkg/version` | 100.0% | 100.0% | 0 |
-
-Note: `internal/discord` coverage at 64.1% is pre-existing (unchanged from baseline).
-The changed file `/Users/jamesprial/code/go-scream/internal/discord/player.go` has no
-coverage regression.
+```
+0 issues.
+```
 
 ---
 
-## Linter Output
+## Pre-existing Skips (not failures)
 
-```
-golangci-lint run  →  0 issues.
-```
+The following 14 tests are permanently skipped because `ffmpeg` is not installed on this machine. This is expected and by design — the tests guard themselves with `t.Skip()`:
+
+- `TestNewFFmpegGenerator_Success`
+- `TestFFmpegGenerator_CorrectByteCount`
+- `TestFFmpegGenerator_NonSilent`
+- `TestFFmpegGenerator_AllPresets`
+- `TestFFmpegGenerator_AllNamedPresets`
+- `TestFFmpegGenerator_InvalidDuration`
+- `TestFFmpegGenerator_NegativeDuration`
+- `TestFFmpegGenerator_InvalidSampleRate`
+- `TestFFmpegGenerator_NegativeSampleRate`
+- `TestFFmpegGenerator_InvalidChannels`
+- `TestFFmpegGenerator_ZeroChannels`
+- `TestFFmpegGenerator_InvalidAmplitude`
+- `TestFFmpegGenerator_InvalidCrusherBits`
+- `TestFFmpegGenerator_InvalidLimiterLevel`
+- `TestFFmpegGenerator_EvenByteCount`
+- `TestFFmpegGenerator_StereoAligned`
+- `TestFFmpegGenerator_MonoOutput`
+- `TestFFmpegGenerator_DeterministicOutput`
 
 ---
 
 ## Total Test Count
 
-- **Passed:** ~200+ individual test functions/subtests (identical count to baseline)
+- **Passed:** ~200+ individual test functions/subtests
 - **Failed:** 0
-- **Skipped:** 18 (all ffmpeg-dependent, no ffmpeg on PATH — same as baseline)
+- **Skipped:** 18 (all ffmpeg-dependent, no ffmpeg on PATH)
 - **Race conditions:** 0
 - **Vet warnings:** 0
 - **Lint issues:** 0
-- **Regressions:** 0
-
----
-
-## Implementation Notes
-
-The refactored `/Users/jamesprial/code/go-scream/internal/discord/player.go` correctly:
-
-1. Uses named return `retErr error` on `Play()` so the deferred `vc.Disconnect()` can
-   assign to `retErr` when the primary return is `nil` — no `//nolint` required.
-2. Uses `_ = vc.Speaking(false)` only in the cancellation paths where the error is
-   intentionally discarded (Speaking(false) during an already-cancelled context is
-   best-effort). The normal completion path properly checks and returns the error from
-   `vc.Speaking(false)`.
-3. All deferred close error handling follows the project convention: named returns in
-   library code.
