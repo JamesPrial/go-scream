@@ -11,6 +11,9 @@ import (
 	"github.com/JamesPrial/go-scream/internal/audio"
 )
 
+// Compile-time check that Generator implements audio.Generator.
+var _ audio.Generator = (*Generator)(nil)
+
 // Generator implements audio.Generator using pure Go synthesis.
 // It produces s16le PCM audio with a configurable sample rate and channel count.
 type Generator struct {

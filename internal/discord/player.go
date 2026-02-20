@@ -7,11 +7,11 @@ import (
 	"time"
 )
 
-// SilenceFrame is the Opus silence frame sent after audio playback ends.
-var SilenceFrame = []byte{0xF8, 0xFF, 0xFE}
+// silenceFrame is the Opus silence frame sent after audio playback ends.
+var silenceFrame = []byte{0xF8, 0xFF, 0xFE}
 
-// SilenceFrameCount is the number of silence frames sent after playback.
-const SilenceFrameCount = 5
+// silenceFrameCount is the number of silence frames sent after playback.
+const silenceFrameCount = 5
 
 // VoicePlayer sends Opus-encoded audio frames to a Discord voice channel.
 type VoicePlayer interface {
@@ -82,11 +82,7 @@ loop:
 	for {
 		select {
 		case <-ctx.Done():
-			p.logger.Debug("playback cancelled, sending silence")
-			silenceCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-			sendSilence(silenceCtx, opusSend)
-			cancel()
-			_ = vc.Speaking(false)
+			cancelPlayback(p.logger, vc, opusSend)
 			return ctx.Err()
 		case frame, ok := <-frames:
 			if !ok {
@@ -95,11 +91,7 @@ loop:
 			select {
 			case opusSend <- frame:
 			case <-ctx.Done():
-				p.logger.Debug("playback cancelled, sending silence")
-				silenceCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-				sendSilence(silenceCtx, opusSend)
-				cancel()
-				_ = vc.Speaking(false)
+				cancelPlayback(p.logger, vc, opusSend)
 				return ctx.Err()
 			}
 		}
@@ -117,12 +109,22 @@ loop:
 	return nil
 }
 
-// sendSilence sends SilenceFrameCount copies of SilenceFrame to opusSend.
+// cancelPlayback sends silence frames with a timeout and stops speaking.
+// Used when context cancellation interrupts playback.
+func cancelPlayback(logger *slog.Logger, vc VoiceConn, opusSend chan<- []byte) {
+	logger.Debug("playback cancelled, sending silence")
+	silenceCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	sendSilence(silenceCtx, opusSend)
+	cancel()
+	_ = vc.Speaking(false)
+}
+
+// sendSilence sends silenceFrameCount copies of silenceFrame to opusSend.
 // It returns early if ctx is cancelled, making it safe to call on a full channel.
 func sendSilence(ctx context.Context, opusSend chan<- []byte) {
-	for i := 0; i < SilenceFrameCount; i++ {
+	for range silenceFrameCount {
 		select {
-		case opusSend <- SilenceFrame:
+		case opusSend <- silenceFrame:
 		case <-ctx.Done():
 			return
 		}

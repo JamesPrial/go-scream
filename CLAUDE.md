@@ -11,7 +11,7 @@ go build ./cmd/skill                    # Build OpenClaw skill binary
 go test ./...                           # Run all tests
 go test -race ./...                     # Run tests with race detector
 go test -v ./internal/scream/...        # Run tests for a specific package
-go test -run TestGenerator_Classic ./internal/audio/native/  # Run a single test
+go test -run TestGenerator ./internal/audio/native/           # Run a single test
 go test -bench=. -benchmem ./...        # Run benchmarks
 go vet ./...                            # Static analysis
 staticcheck ./...                       # Extended linting (if installed)

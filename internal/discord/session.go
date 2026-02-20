@@ -13,7 +13,6 @@ type VoiceConn interface {
 	Speaking(speaking bool) error
 	OpusSendChannel() chan<- []byte
 	Disconnect() error
-	IsReady() bool
 }
 
 // VoiceState represents a user's voice connection state in a guild.
@@ -67,6 +66,3 @@ func (d *GoVoiceConn) OpusSendChannel() chan<- []byte { return d.VC.OpusSend }
 
 // Disconnect closes the voice connection.
 func (d *GoVoiceConn) Disconnect() error { return d.VC.Disconnect() }
-
-// IsReady reports whether the voice connection is ready.
-func (d *GoVoiceConn) IsReady() bool { return d.VC.Ready }

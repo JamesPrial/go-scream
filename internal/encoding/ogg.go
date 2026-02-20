@@ -10,6 +10,9 @@ import (
 	"github.com/pion/webrtc/v4/pkg/media/oggwriter"
 )
 
+// Compile-time check that OGGEncoder implements FileEncoder.
+var _ FileEncoder = (*OGGEncoder)(nil)
+
 // OGGEncoder encodes raw s16le PCM audio into an OGG/Opus container.
 type OGGEncoder struct {
 	opus   OpusFrameEncoder

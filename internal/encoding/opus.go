@@ -19,6 +19,9 @@ var validOpusSampleRates = map[int]bool{
 	48000: true,
 }
 
+// Compile-time check that GopusFrameEncoder implements OpusFrameEncoder.
+var _ OpusFrameEncoder = (*GopusFrameEncoder)(nil)
+
 // GopusFrameEncoder encodes raw s16le PCM audio into Opus frames using
 // the gopus binding for libopus.
 type GopusFrameEncoder struct {

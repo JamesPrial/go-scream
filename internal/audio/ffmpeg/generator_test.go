@@ -48,10 +48,6 @@ func testParams() audio.ScreamParams {
 	}
 }
 
-// --- Compile-time interface check ---
-
-var _ audio.Generator = (*Generator)(nil)
-
 // --- Constructor tests ---
 
 func TestNewGenerator_Success(t *testing.T) {

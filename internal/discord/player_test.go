@@ -27,7 +27,6 @@ type mockVoiceConn struct {
 	opusSend      chan []byte
 	speakingErr   error // injected error for Speaking()
 	disconnectErr error // injected error for Disconnect()
-	ready         bool
 
 	// collector goroutine lifecycle
 	collectDone chan struct{}
@@ -36,7 +35,6 @@ type mockVoiceConn struct {
 func newMockVoiceConn() *mockVoiceConn {
 	m := &mockVoiceConn{
 		opusSend:    make(chan []byte, 256),
-		ready:       true,
 		collectDone: make(chan struct{}),
 	}
 	// Start a goroutine to collect frames sent to the opus channel.
@@ -70,12 +68,6 @@ func (m *mockVoiceConn) Disconnect() error {
 	defer m.mu.Unlock()
 	m.disconnected = true
 	return m.disconnectErr
-}
-
-func (m *mockVoiceConn) IsReady() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.ready
 }
 
 // drainAndCollect closes the opusSend channel (simulating cleanup after Play
@@ -179,14 +171,14 @@ func TestNewPlayer_NotNil(t *testing.T) {
 
 func TestSilenceFrame_Content(t *testing.T) {
 	want := []byte{0xF8, 0xFF, 0xFE}
-	if !bytes.Equal(SilenceFrame, want) {
-		t.Errorf("SilenceFrame = %v, want %v", SilenceFrame, want)
+	if !bytes.Equal(silenceFrame, want) {
+		t.Errorf("silenceFrame = %v, want %v", silenceFrame, want)
 	}
 }
 
 func TestSilenceFrameCount_Value(t *testing.T) {
-	if SilenceFrameCount != 5 {
-		t.Errorf("SilenceFrameCount = %d, want 5", SilenceFrameCount)
+	if silenceFrameCount != 5 {
+		t.Errorf("silenceFrameCount = %d, want 5", silenceFrameCount)
 	}
 }
 
@@ -355,7 +347,7 @@ func TestPlayer_Play_SpeakingProtocol(t *testing.T) {
 // Silence frames
 // ---------------------------------------------------------------------------
 
-func TestPlayer_Play_SilenceFrames(t *testing.T) {
+func TestPlayer_Play_silenceFrames(t *testing.T) {
 	player, _, vc := setupPlayer()
 	frames := makeFrames(2)
 

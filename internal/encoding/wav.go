@@ -25,6 +25,9 @@ type wavFileHeader struct {
 	Subchunk2Size uint32  // len(pcmData)
 }
 
+// Compile-time check that WAVEncoder implements FileEncoder.
+var _ FileEncoder = (*WAVEncoder)(nil)
+
 // WAVEncoder encodes raw s16le PCM audio into a WAV file.
 type WAVEncoder struct {
 	logger *slog.Logger
