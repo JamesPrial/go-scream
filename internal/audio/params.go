@@ -27,6 +27,12 @@ const (
 	LayerBackgroundNoise
 )
 
+// DefaultSampleRate is the standard sample rate used by default.
+const DefaultSampleRate = 48000
+
+// DefaultChannels is the standard channel count used by default.
+const DefaultChannels = 2
+
 // Coprime constants used by both native and ffmpeg backends for
 // deterministic frequency stepping in audio layer generation.
 const (
@@ -35,6 +41,17 @@ const (
 	CoprimeHighShriek    int64 = 89
 	CoprimeNoiseBurst    int64 = 173
 )
+
+// DefaultFilterParams returns the filter parameters shared across all presets.
+// Individual presets override specific fields as needed.
+func DefaultFilterParams() FilterParams {
+	return FilterParams{
+		CompThreshold: -20,
+		CompAttack:    5,
+		CompRelease:   50,
+		LimiterLevel:  0.95,
+	}
+}
 
 // LayerParams holds parameters for a single synthesis layer.
 type LayerParams struct {
@@ -85,8 +102,8 @@ func Randomize(seed int64) ScreamParams {
 
 	return ScreamParams{
 		Duration:   time.Duration(dur * float64(time.Second)),
-		SampleRate: 48000,
-		Channels:   2,
+		SampleRate: DefaultSampleRate,
+		Channels:   DefaultChannels,
 		Seed:       seed,
 		Layers: [5]LayerParams{
 			{
@@ -133,18 +150,16 @@ func Randomize(seed int64) ScreamParams {
 			FloorAmp:  rf(0.05, 0.15),
 			BurstSeed: ri(1, 9999),
 		},
-		Filter: FilterParams{
-			HighpassCutoff: rf(80, 200),
-			LowpassCutoff:  rf(6000, 12000),
-			CrusherBits:    int(ri(6, 12)),
-			CrusherMix:     rf(0.3, 0.7),
-			CompRatio:      rf(4, 12),
-			CompThreshold:  -20,
-			CompAttack:     5,
-			CompRelease:    50,
-			VolumeBoostDB:  rf(6, 12),
-			LimiterLevel:   0.95,
-		},
+		Filter: func() FilterParams {
+			f := DefaultFilterParams()
+			f.HighpassCutoff = rf(80, 200)
+			f.LowpassCutoff = rf(6000, 12000)
+			f.CrusherBits = int(ri(6, 12))
+			f.CrusherMix = rf(0.3, 0.7)
+			f.CompRatio = rf(4, 12)
+			f.VolumeBoostDB = rf(6, 12)
+			return f
+		}(),
 	}
 }
 

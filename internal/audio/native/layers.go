@@ -6,6 +6,10 @@ import (
 	"github.com/JamesPrial/go-scream/internal/audio"
 )
 
+// backgroundNoiseSeedXOR is XORed into the burst seed to produce a distinct
+// seed for the background noise RNG, decorrelating it from the burst layer.
+const backgroundNoiseSeedXOR int64 = 0x5a5a5a5a5a5a5a5a
+
 // Layer generates audio samples for a single synthesis layer.
 type Layer interface {
 	Sample(t float64) float64
@@ -27,8 +31,10 @@ type SweepJumpLayer struct {
 	curFreq   float64
 }
 
-// NewPrimaryScreamLayer creates a primary scream layer from params.
-func NewPrimaryScreamLayer(p audio.LayerParams, sampleRate int) *SweepJumpLayer {
+// newSweepJumpLayer constructs a SweepJumpLayer with the given params, sample
+// rate, and coprime constant. It is the shared implementation for both the
+// primary scream and high-shriek layer constructors.
+func newSweepJumpLayer(p audio.LayerParams, sampleRate int, coprime int64) *SweepJumpLayer {
 	return &SweepJumpLayer{
 		osc:       NewOscillator(sampleRate),
 		seed:      p.Seed,
@@ -37,9 +43,14 @@ func NewPrimaryScreamLayer(p audio.LayerParams, sampleRate int) *SweepJumpLayer 
 		jump:      p.JumpRate,
 		amp:       p.Amplitude,
 		rise:      p.Rise,
-		coprime:   audio.CoprimePrimaryScream,
+		coprime:   coprime,
 		curStep:   -1,
 	}
+}
+
+// NewPrimaryScreamLayer creates a primary scream layer from params.
+func NewPrimaryScreamLayer(p audio.LayerParams, sampleRate int) *SweepJumpLayer {
+	return newSweepJumpLayer(p, sampleRate, audio.CoprimePrimaryScream)
 }
 
 // Sample returns the audio sample at time t for the sweep-jump layer.
@@ -96,17 +107,7 @@ func (l *HarmonicSweepLayer) Sample(t float64) float64 {
 // NewHighShriekLayer creates a high shriek layer from params.
 // It returns a *SweepJumpLayer configured with CoprimeHighShriek.
 func NewHighShriekLayer(p audio.LayerParams, sampleRate int) *SweepJumpLayer {
-	return &SweepJumpLayer{
-		osc:       NewOscillator(sampleRate),
-		seed:      p.Seed,
-		base:      p.BaseFreq,
-		freqRange: p.FreqRange,
-		jump:      p.JumpRate,
-		amp:       p.Amplitude,
-		rise:      p.Rise,
-		coprime:   audio.CoprimeHighShriek,
-		curStep:   -1,
-	}
+	return newSweepJumpLayer(p, sampleRate, audio.CoprimeHighShriek)
 }
 
 // NoiseBurstLayer generates gated noise bursts.
@@ -157,7 +158,7 @@ type BackgroundNoiseLayer struct {
 // NewBackgroundNoiseLayer creates a background noise layer from params.
 func NewBackgroundNoiseLayer(noise audio.NoiseParams) *BackgroundNoiseLayer {
 	return &BackgroundNoiseLayer{
-		noiseRng: rand.New(rand.NewSource(noise.BurstSeed ^ 0x5a5a5a5a5a5a5a5a)),
+		noiseRng: rand.New(rand.NewSource(noise.BurstSeed ^ backgroundNoiseSeedXOR)),
 		amp:      noise.FloorAmp,
 	}
 }

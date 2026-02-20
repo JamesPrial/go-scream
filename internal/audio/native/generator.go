@@ -14,6 +14,16 @@ import (
 // Compile-time check that Generator implements audio.Generator.
 var _ audio.Generator = (*Generator)(nil)
 
+// Prime multipliers used to decorrelate per-layer seeds from the global seed.
+// Each constant is a distinct prime, ensuring the XOR mixes are independent.
+const (
+	seedMixLayer0 int64 = 1000003
+	seedMixLayer1 int64 = 1000033
+	seedMixLayer2 int64 = 1000037
+	seedMixLayer3 int64 = 1000039
+	seedMixNoise  int64 = 1000081
+)
+
 // Generator implements audio.Generator using pure Go synthesis.
 // It produces s16le PCM audio with a configurable sample rate and channel count.
 type Generator struct {
@@ -92,19 +102,19 @@ func buildLayers(params audio.ScreamParams, sampleRate int) []Layer {
 	// Derive per-layer seeds that incorporate the global seed.
 	// Using XOR with prime multiples of globalSeed ensures decorrelation.
 	p0 := lp[0]
-	p0.Seed = lp[0].Seed ^ (globalSeed * 1000003)
+	p0.Seed = lp[0].Seed ^ (globalSeed * seedMixLayer0)
 
 	p1 := lp[1]
-	p1.Seed = lp[1].Seed ^ (globalSeed * 1000033)
+	p1.Seed = lp[1].Seed ^ (globalSeed * seedMixLayer1)
 
 	p2 := lp[2]
-	p2.Seed = lp[2].Seed ^ (globalSeed * 1000037)
+	p2.Seed = lp[2].Seed ^ (globalSeed * seedMixLayer2)
 
 	p3 := lp[3]
-	p3.Seed = lp[3].Seed ^ (globalSeed * 1000039)
+	p3.Seed = lp[3].Seed ^ (globalSeed * seedMixLayer3)
 
 	noiseWithSeed := noise
-	noiseWithSeed.BurstSeed = noise.BurstSeed ^ (globalSeed * 1000081)
+	noiseWithSeed.BurstSeed = noise.BurstSeed ^ (globalSeed * seedMixNoise)
 
 	layers := []Layer{
 		NewPrimaryScreamLayer(p0, sampleRate),

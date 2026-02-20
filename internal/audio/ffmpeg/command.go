@@ -9,6 +9,10 @@ import (
 	"github.com/JamesPrial/go-scream/internal/audio"
 )
 
+// backgroundNoiseSeedOffset is added to the aevalsrc time expression seed for
+// the background noise layer, decorrelating it from other random streams.
+const backgroundNoiseSeedOffset = 7777
+
 // buildArgs builds the complete FFmpeg CLI argument list from ScreamParams.
 // The output is raw s16le PCM written to stdout (pipe:1).
 func buildArgs(params audio.ScreamParams) []string {
@@ -118,8 +122,8 @@ func layerExpr(layer audio.LayerParams, noise audio.NoiseParams, globalSeed int6
 		}
 		floorAmpStr := fmtFloat(floorAmp)
 		return fmt.Sprintf(
-			"%s*(2*random(t*%s+7777)-1)",
-			floorAmpStr, sampleRate,
+			"%s*(2*random(t*%s+%d)-1)",
+			floorAmpStr, sampleRate, backgroundNoiseSeedOffset,
 		)
 
 	default:
