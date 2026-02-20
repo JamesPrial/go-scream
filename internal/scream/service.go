@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 
 	"github.com/JamesPrial/go-scream/internal/audio"
@@ -19,6 +20,7 @@ type Service struct {
 	fileEnc   encoding.FileEncoder
 	frameEnc  encoding.OpusFrameEncoder
 	player    discord.VoicePlayer
+	logger    *slog.Logger
 }
 
 // NewServiceWithDeps constructs a Service with all dependencies explicitly
@@ -31,6 +33,7 @@ func NewServiceWithDeps(
 	fileEnc encoding.FileEncoder,
 	frameEnc encoding.OpusFrameEncoder,
 	player discord.VoicePlayer,
+	logger *slog.Logger,
 ) *Service {
 	return &Service{
 		cfg:       cfg,
@@ -38,6 +41,7 @@ func NewServiceWithDeps(
 		fileEnc:   fileEnc,
 		frameEnc:  frameEnc,
 		player:    player,
+		logger:    logger,
 	}
 }
 
@@ -57,19 +61,26 @@ func (s *Service) Play(ctx context.Context, guildID, channelID string) error {
 		return err
 	}
 
+	s.logger.Debug("resolving audio params", "preset", s.cfg.Preset, "duration", s.cfg.Duration, "volume", s.cfg.Volume)
+
 	params, err := resolveParams(s.cfg)
 	if err != nil {
 		return err
 	}
+
+	s.logger.Debug("generating audio")
 
 	pcm, err := s.generator.Generate(params)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrGenerateFailed, err)
 	}
 
+	s.logger.Debug("encoding frames")
+
 	frameCh, errCh := s.frameEnc.EncodeFrames(pcm, params.SampleRate, params.Channels)
 
 	if s.cfg.DryRun {
+		s.logger.Info("dry-run: encoding and discarding frames")
 		for range frameCh {
 		}
 		encErr := <-errCh
@@ -78,6 +89,8 @@ func (s *Service) Play(ctx context.Context, guildID, channelID string) error {
 		}
 		return nil
 	}
+
+	s.logger.Debug("streaming to discord", "guild", guildID, "channel", channelID)
 
 	playErr := s.player.Play(ctx, guildID, channelID, frameCh)
 	encErr := <-errCh
@@ -99,15 +112,21 @@ func (s *Service) Generate(ctx context.Context, dst io.Writer) error {
 		return err
 	}
 
+	s.logger.Debug("resolving audio params", "preset", s.cfg.Preset, "duration", s.cfg.Duration, "volume", s.cfg.Volume)
+
 	params, err := resolveParams(s.cfg)
 	if err != nil {
 		return err
 	}
 
+	s.logger.Debug("generating audio")
+
 	pcm, err := s.generator.Generate(params)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrGenerateFailed, err)
 	}
+
+	s.logger.Debug("encoding to file")
 
 	if err := s.fileEnc.Encode(dst, pcm, params.SampleRate, params.Channels); err != nil {
 		return fmt.Errorf("%w: %w", ErrEncodeFailed, err)

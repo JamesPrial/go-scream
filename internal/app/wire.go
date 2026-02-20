@@ -6,6 +6,7 @@ package app
 import (
 	"fmt"
 	"io"
+	"log/slog"
 
 	"github.com/bwmarrin/discordgo"
 
@@ -29,32 +30,32 @@ const formatWAV = "wav"
 // returns an ffmpeg-backed generator. Any other value returns the native Go
 // generator. Returns an error only when the ffmpeg backend is requested but
 // the ffmpeg binary cannot be found.
-func NewGenerator(backend string) (audio.Generator, error) {
+func NewGenerator(backend string, logger *slog.Logger) (audio.Generator, error) {
 	if backend == backendFFmpeg {
-		g, err := ffmpeg.NewGenerator()
+		g, err := ffmpeg.NewGenerator(logger)
 		if err != nil {
 			return nil, err
 		}
 		return g, nil
 	}
-	return native.NewGenerator(), nil
+	return native.NewGenerator(logger), nil
 }
 
 // NewFileEncoder returns a FileEncoder for the given format string. When
 // format is "wav", a WAVEncoder is returned. Any other value returns an
 // OGGEncoder. NewFileEncoder never returns nil.
-func NewFileEncoder(format string) encoding.FileEncoder {
+func NewFileEncoder(format string, logger *slog.Logger) encoding.FileEncoder {
 	if format == formatWAV {
-		return encoding.NewWAVEncoder()
+		return encoding.NewWAVEncoder(logger)
 	}
-	return encoding.NewOGGEncoder()
+	return encoding.NewOGGEncoder(logger)
 }
 
 // NewDiscordDeps creates a discordgo session for the given bot token, opens
 // the WebSocket connection, and returns a ready-to-use VoicePlayer together
 // with an io.Closer that must be called to close the session when done.
 // On any error both returned values are nil.
-func NewDiscordDeps(token string) (discord.VoicePlayer, io.Closer, error) {
+func NewDiscordDeps(token string, logger *slog.Logger) (discord.VoicePlayer, io.Closer, error) {
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create discord session: %w", err)
@@ -63,6 +64,6 @@ func NewDiscordDeps(token string) (discord.VoicePlayer, io.Closer, error) {
 		return nil, nil, fmt.Errorf("failed to open discord session: %w", err)
 	}
 	sess := &discord.GoSession{S: session}
-	player := discord.NewPlayer(sess)
+	player := discord.NewPlayer(sess, logger)
 	return player, session, nil
 }

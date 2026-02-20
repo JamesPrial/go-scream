@@ -47,13 +47,15 @@ cmd/skill  (OpenClaw)   ─┤
 
 **Data flow:** `Config` → `audio.Generator` produces s16le PCM → `encoding.OpusFrameEncoder` produces Opus frames → either `discord.Player` streams to Discord or `encoding.FileEncoder` writes OGG/WAV.
 
-**Dependency injection:** All components wired via constructor injection in `internal/app/wire.go`. `scream.NewServiceWithDeps` accepts interfaces, making the service fully testable with mocks.
+**Dependency injection:** All components wired via constructor injection in `internal/app/wire.go`. `scream.NewServiceWithDeps` accepts interfaces, making the service fully testable with mocks. Every constructor takes `*slog.Logger` as a parameter — use `slog.New(slog.NewTextHandler(io.Discard, nil))` in tests.
 
 **Config cascade:** Defaults → YAML file → env vars (`SCREAM_*`, `DISCORD_TOKEN`) → CLI flags. Note: `internal/config` has a custom `UnmarshalYAML` that parses Go duration strings (e.g., `"5s"`, `"500ms"`) manually.
 
+**Structured logging:** `log/slog` with `TextHandler` writing to stderr. Log level resolved by `config.ParseLogLevel(cfg)`: explicit `LogLevel` field wins, then `Verbose` bool → info, default → warn. CLI exposes `--log-level` flag and `SCREAM_LOG_LEVEL` env var.
+
 ## Key Conventions
 
-- **No `//nolint` directives.** Fix lint issues properly: use `_ =` for intentionally discarded errors, named returns (`retErr error`) for deferred cleanup in library code, stderr warnings for deferred cleanup in CLI code.
+- **No `//nolint` directives.** Fix lint issues properly: use `_ =` for intentionally discarded errors, named returns (`retErr error`) for deferred cleanup in library code, `slog.Warn` for deferred cleanup in CLI code.
 - **Interfaces at consumption point.** `audio.Generator` is in `internal/audio`, consumed by `internal/scream`. Implementations are in sub-packages.
 - **Compile-time interface checks:** `var _ audio.Generator = (*Generator)(nil)` in each implementation file.
 - **Sentinel errors per package** (e.g., `config.ErrInvalidBackend`, `discord.ErrNoVoiceChannel`), wrapped with `%w`.

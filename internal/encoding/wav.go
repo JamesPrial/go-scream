@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log/slog"
 )
 
 // wavFileHeader is the 44-byte RIFF/WAVE header for a PCM WAV file.
@@ -25,11 +26,13 @@ type wavFileHeader struct {
 }
 
 // WAVEncoder encodes raw s16le PCM audio into a WAV file.
-type WAVEncoder struct{}
+type WAVEncoder struct {
+	logger *slog.Logger
+}
 
 // NewWAVEncoder returns a new WAVEncoder.
-func NewWAVEncoder() *WAVEncoder {
-	return &WAVEncoder{}
+func NewWAVEncoder(logger *slog.Logger) *WAVEncoder {
+	return &WAVEncoder{logger: logger}
 }
 
 // Encode reads s16le PCM data from src and writes a WAV file to dst.
@@ -47,6 +50,8 @@ func (e *WAVEncoder) Encode(dst io.Writer, src io.Reader, sampleRate, channels i
 	if err != nil {
 		return fmt.Errorf("%w: reading PCM data: %w", ErrWAVWrite, err)
 	}
+
+	e.logger.Debug("writing WAV file", "sample_rate", sampleRate, "channels", channels, "data_bytes", len(pcmData))
 
 	dataSize := uint32(len(pcmData))
 

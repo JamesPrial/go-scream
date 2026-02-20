@@ -249,6 +249,7 @@ func TestApplyEnv_AllVariables(t *testing.T) {
 	t.Setenv("SCREAM_VOLUME", "0.42")
 	t.Setenv("SCREAM_FORMAT", "wav")
 	t.Setenv("SCREAM_VERBOSE", "true")
+	t.Setenv("SCREAM_LOG_LEVEL", "debug")
 
 	ApplyEnv(&cfg)
 
@@ -276,14 +277,18 @@ func TestApplyEnv_AllVariables(t *testing.T) {
 	if cfg.Verbose != true {
 		t.Errorf("Verbose = %v, want true", cfg.Verbose)
 	}
+	if cfg.LogLevel != "debug" {
+		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
+	}
 }
 
 func TestApplyEnv_EmptyEnvVarsUnset(t *testing.T) {
 	cfg := Config{
-		Token:   "original-token",
-		GuildID: "original-guild",
-		Backend: BackendNative,
-		Volume:  0.9,
+		Token:    "original-token",
+		GuildID:  "original-guild",
+		Backend:  BackendNative,
+		Volume:   0.9,
+		LogLevel: "warn",
 	}
 
 	// Set env vars to empty strings - these should be treated as unset.
@@ -295,6 +300,7 @@ func TestApplyEnv_EmptyEnvVarsUnset(t *testing.T) {
 	t.Setenv("SCREAM_VOLUME", "")
 	t.Setenv("SCREAM_FORMAT", "")
 	t.Setenv("SCREAM_VERBOSE", "")
+	t.Setenv("SCREAM_LOG_LEVEL", "")
 
 	ApplyEnv(&cfg)
 
@@ -310,6 +316,9 @@ func TestApplyEnv_EmptyEnvVarsUnset(t *testing.T) {
 	}
 	if cfg.Volume != 0.9 {
 		t.Errorf("Volume = %f, want %f", cfg.Volume, 0.9)
+	}
+	if cfg.LogLevel != "warn" {
+		t.Errorf("LogLevel = %q, want %q (empty env should not override)", cfg.LogLevel, "warn")
 	}
 }
 
@@ -474,6 +483,30 @@ func TestApplyEnv_IndividualVariables(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:    "SCREAM_LOG_LEVEL debug",
+			envKey:  "SCREAM_LOG_LEVEL",
+			envVal:  "debug",
+			initial: Config{},
+			check: func(t *testing.T, cfg Config) {
+				t.Helper()
+				if cfg.LogLevel != "debug" {
+					t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
+				}
+			},
+		},
+		{
+			name:    "SCREAM_LOG_LEVEL does not override when empty",
+			envKey:  "SCREAM_LOG_LEVEL",
+			envVal:  "",
+			initial: Config{LogLevel: "info"},
+			check: func(t *testing.T, cfg Config) {
+				t.Helper()
+				if cfg.LogLevel != "info" {
+					t.Errorf("LogLevel = %q, want %q (empty env should not override)", cfg.LogLevel, "info")
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -509,6 +542,55 @@ func TestApplyEnv_VerboseVariants(t *testing.T) {
 			ApplyEnv(&cfg)
 			if cfg.Verbose != tt.want {
 				t.Errorf("Verbose = %v, want %v for SCREAM_VERBOSE=%q", cfg.Verbose, tt.want, tt.val)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ApplyEnv() — SCREAM_LOG_LEVEL
+// ---------------------------------------------------------------------------
+
+func TestApplyEnv_LogLevel(t *testing.T) {
+	tests := []struct {
+		name    string
+		envVal  string
+		initial string
+		wantVal string
+	}{
+		{
+			name:    "SCREAM_LOG_LEVEL=debug sets LogLevel",
+			envVal:  "debug",
+			initial: "",
+			wantVal: "debug",
+		},
+		{
+			name:    "SCREAM_LOG_LEVEL=error overrides existing",
+			envVal:  "error",
+			initial: "info",
+			wantVal: "error",
+		},
+		{
+			name:    "SCREAM_LOG_LEVEL=INFO preserves case",
+			envVal:  "INFO",
+			initial: "",
+			wantVal: "INFO",
+		},
+		{
+			name:    "empty SCREAM_LOG_LEVEL preserves existing value",
+			envVal:  "",
+			initial: "warn",
+			wantVal: "warn",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Config{LogLevel: tt.initial}
+			t.Setenv("SCREAM_LOG_LEVEL", tt.envVal)
+			ApplyEnv(&cfg)
+			if cfg.LogLevel != tt.wantVal {
+				t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, tt.wantVal)
 			}
 		})
 	}

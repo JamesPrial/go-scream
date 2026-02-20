@@ -75,4 +75,7 @@ func ApplyEnv(cfg *Config) {
 			cfg.Verbose = b
 		}
 	}
+	if v := os.Getenv("SCREAM_LOG_LEVEL"); v != "" {
+		cfg.LogLevel = v
+	}
 }

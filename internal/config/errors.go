@@ -38,4 +38,8 @@ var (
 	// ErrMissingOutput is returned when the output file path is not set.
 	// Used by the CLI generate subcommand for context-specific validation.
 	ErrMissingOutput = errors.New("config: output file path is required")
+
+	// ErrInvalidLogLevel is returned when the log level is not one of the
+	// accepted values: debug, info, warn, or error.
+	ErrInvalidLogLevel = errors.New("config: invalid log level (must be debug, info, warn, or error)")
 )

@@ -302,6 +302,101 @@ func TestValidate_Format(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Validate() — LogLevel field
+// ---------------------------------------------------------------------------
+
+func TestValidate_LogLevel(t *testing.T) {
+	tests := []struct {
+		name     string
+		logLevel string
+		wantErr  error
+	}{
+		{
+			name:     "empty is valid (no log level set)",
+			logLevel: "",
+			wantErr:  nil,
+		},
+		{
+			name:     "debug is valid",
+			logLevel: "debug",
+			wantErr:  nil,
+		},
+		{
+			name:     "info is valid",
+			logLevel: "info",
+			wantErr:  nil,
+		},
+		{
+			name:     "warn is valid",
+			logLevel: "warn",
+			wantErr:  nil,
+		},
+		{
+			name:     "error is valid",
+			logLevel: "error",
+			wantErr:  nil,
+		},
+		{
+			name:     "INFO is valid (case-insensitive)",
+			logLevel: "INFO",
+			wantErr:  nil,
+		},
+		{
+			name:     "Debug is valid (mixed case)",
+			logLevel: "Debug",
+			wantErr:  nil,
+		},
+		{
+			name:     "WARN is valid (uppercase)",
+			logLevel: "WARN",
+			wantErr:  nil,
+		},
+		{
+			name:     "ERROR is valid (uppercase)",
+			logLevel: "ERROR",
+			wantErr:  nil,
+		},
+		{
+			name:     "trace is invalid",
+			logLevel: "trace",
+			wantErr:  ErrInvalidLogLevel,
+		},
+		{
+			name:     "invalid is invalid",
+			logLevel: "invalid",
+			wantErr:  ErrInvalidLogLevel,
+		},
+		{
+			name:     "fatal is invalid",
+			logLevel: "fatal",
+			wantErr:  ErrInvalidLogLevel,
+		},
+		{
+			name:     "verbose is invalid (not a log level)",
+			logLevel: "verbose",
+			wantErr:  ErrInvalidLogLevel,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Default()
+			cfg.LogLevel = tt.logLevel
+			err := Validate(cfg)
+			if tt.wantErr == nil {
+				if err != nil {
+					t.Errorf("Validate() unexpected error: %v", err)
+				}
+			} else {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("Validate() error = %v, want %v", err, tt.wantErr)
+				}
+			}
+		})
+	}
+}
+
 func TestValidate_MultipleInvalidFields(t *testing.T) {
 	// When multiple fields are invalid, Validate should return an error.
 	// We do not prescribe which error it returns first; we just confirm
@@ -344,6 +439,7 @@ func TestValidate_SentinelErrorsExist(t *testing.T) {
 		{"ErrInvalidDuration", ErrInvalidDuration},
 		{"ErrInvalidVolume", ErrInvalidVolume},
 		{"ErrInvalidFormat", ErrInvalidFormat},
+		{"ErrInvalidLogLevel", ErrInvalidLogLevel},
 	}
 
 	for _, s := range sentinels {
@@ -375,6 +471,19 @@ func TestValidate_ErrorWrapping(t *testing.T) {
 	}
 	if !errors.Is(err, ErrInvalidBackend) {
 		t.Errorf("errors.Is(err, ErrInvalidBackend) = false, want true; err = %v", err)
+	}
+}
+
+func TestValidate_LogLevel_ErrorWrapping(t *testing.T) {
+	// Verify that ErrInvalidLogLevel is returned and detectable via errors.Is.
+	cfg := Default()
+	cfg.LogLevel = "trace"
+	err := Validate(cfg)
+	if err == nil {
+		t.Fatal("expected error for invalid log level")
+	}
+	if !errors.Is(err, ErrInvalidLogLevel) {
+		t.Errorf("errors.Is(err, ErrInvalidLogLevel) = false, want true; err = %v", err)
 	}
 }
 

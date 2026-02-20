@@ -68,7 +68,7 @@ func makePCM(totalSamples, channels int) []byte {
 // encodeWAV is a helper that calls WAVEncoder.Encode and returns the output.
 func encodeWAV(t *testing.T, pcm []byte, sampleRate, channels int) []byte {
 	t.Helper()
-	enc := NewWAVEncoder()
+	enc := NewWAVEncoder(discardLogger)
 	var buf bytes.Buffer
 	err := enc.Encode(&buf, bytes.NewReader(pcm), sampleRate, channels)
 	if err != nil {
@@ -300,7 +300,7 @@ func TestWAVEncoder_InvalidSampleRate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			enc := NewWAVEncoder()
+			enc := NewWAVEncoder(discardLogger)
 			var buf bytes.Buffer
 			err := enc.Encode(&buf, bytes.NewReader([]byte{0, 0}), tt.sampleRate, 2)
 			if err == nil {
@@ -326,7 +326,7 @@ func TestWAVEncoder_InvalidChannels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			enc := NewWAVEncoder()
+			enc := NewWAVEncoder(discardLogger)
 			var buf bytes.Buffer
 			err := enc.Encode(&buf, bytes.NewReader([]byte{0, 0}), 48000, tt.channels)
 			if err == nil {
@@ -340,7 +340,7 @@ func TestWAVEncoder_InvalidChannels(t *testing.T) {
 }
 
 func TestWAVEncoder_WriterError(t *testing.T) {
-	enc := NewWAVEncoder()
+	enc := NewWAVEncoder(discardLogger)
 	pcm := makePCM(100, 2)
 	w := &failWriter{err: io.ErrClosedPipe}
 	err := enc.Encode(w, bytes.NewReader(pcm), 48000, 2)
@@ -409,7 +409,7 @@ func TestWAVEncoder_HeaderFields_TableDriven(t *testing.T) {
 
 func BenchmarkWAVEncoder_1s_Stereo48k(b *testing.B) {
 	pcm := makePCM(48000, 2)
-	enc := NewWAVEncoder()
+	enc := NewWAVEncoder(discardLogger)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var buf bytes.Buffer
@@ -420,7 +420,7 @@ func BenchmarkWAVEncoder_1s_Stereo48k(b *testing.B) {
 
 func BenchmarkWAVEncoder_3s_Stereo48k(b *testing.B) {
 	pcm := makePCM(48000*3, 2)
-	enc := NewWAVEncoder()
+	enc := NewWAVEncoder(discardLogger)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var buf bytes.Buffer

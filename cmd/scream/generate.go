@@ -35,18 +35,17 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if cfg.Verbose {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Generating scream to %s (format: %s)\n", cfg.OutputFile, cfg.Format)
-	}
+	logger := setupLogger(cfg)
+	logger.Info("generating scream", "output", cfg.OutputFile, "format", cfg.Format)
 
-	return runWithService(cfg, func(ctx context.Context, svc *scream.Service) error {
+	return runWithService(cfg, logger, func(ctx context.Context, svc *scream.Service) error {
 		f, err := os.Create(cfg.OutputFile)
 		if err != nil {
 			return fmt.Errorf("failed to create output file: %w", err)
 		}
 		defer func() {
 			if cerr := f.Close(); cerr != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to close output file: %v\n", cerr)
+				logger.Warn("failed to close output file", "error", cerr)
 			}
 		}()
 		return svc.Generate(ctx, f)

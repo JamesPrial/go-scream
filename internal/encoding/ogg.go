@@ -4,6 +4,7 @@ package encoding
 import (
 	"fmt"
 	"io"
+	"log/slog"
 
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v4/pkg/media/oggwriter"
@@ -11,21 +12,22 @@ import (
 
 // OGGEncoder encodes raw s16le PCM audio into an OGG/Opus container.
 type OGGEncoder struct {
-	opus OpusFrameEncoder
+	opus   OpusFrameEncoder
+	logger *slog.Logger
 }
 
 // NewOGGEncoder returns an OGGEncoder backed by a default GopusFrameEncoder.
-func NewOGGEncoder() *OGGEncoder {
-	return &OGGEncoder{opus: NewGopusFrameEncoder()}
+func NewOGGEncoder(logger *slog.Logger) *OGGEncoder {
+	return &OGGEncoder{opus: NewGopusFrameEncoder(logger), logger: logger}
 }
 
 // NewOGGEncoderWithOpus returns an OGGEncoder that uses the provided OpusFrameEncoder.
 // It panics if opus is nil.
-func NewOGGEncoderWithOpus(opus OpusFrameEncoder) *OGGEncoder {
+func NewOGGEncoderWithOpus(opus OpusFrameEncoder, logger *slog.Logger) *OGGEncoder {
 	if opus == nil {
 		panic("encoding: opus encoder must not be nil")
 	}
-	return &OGGEncoder{opus: opus}
+	return &OGGEncoder{opus: opus, logger: logger}
 }
 
 // Encode reads s16le PCM data from src, encodes it as Opus frames, and writes
@@ -33,6 +35,8 @@ func NewOGGEncoderWithOpus(opus OpusFrameEncoder) *OGGEncoder {
 // failures, or the underlying opus error (ErrInvalidSampleRate, ErrInvalidChannels,
 // ErrOpusEncode) on encoding failures.
 func (e *OGGEncoder) Encode(dst io.Writer, src io.Reader, sampleRate, channels int) (retErr error) {
+	e.logger.Debug("writing OGG container", "sample_rate", sampleRate, "channels", channels)
+
 	frameCh, errCh := e.opus.EncodeFrames(src, sampleRate, channels)
 
 	oggWriter, err := oggwriter.NewWith(dst, uint32(sampleRate), uint16(channels))
@@ -76,6 +80,8 @@ func (e *OGGEncoder) Encode(dst io.Writer, src io.Reader, sampleRate, channels i
 			}
 		}
 	}
+
+	e.logger.Debug("OGG encoding complete", "frames", seqNum)
 
 	// Collect the opus encoding error.
 	opusErr := <-errCh

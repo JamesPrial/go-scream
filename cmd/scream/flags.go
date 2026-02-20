@@ -61,6 +61,9 @@ func buildConfig(cmd *cobra.Command) (config.Config, error) {
 	if cmd.Flags().Changed("verbose") {
 		cfg.Verbose = verbose
 	}
+	if cmd.Flags().Changed("log-level") {
+		cfg.LogLevel = logLevelFlag
+	}
 
 	return cfg, nil
 }

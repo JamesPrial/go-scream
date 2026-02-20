@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"layeh.com/gopus"
 )
@@ -22,16 +23,17 @@ var validOpusSampleRates = map[int]bool{
 // the gopus binding for libopus.
 type GopusFrameEncoder struct {
 	bitrate int
+	logger  *slog.Logger
 }
 
 // NewGopusFrameEncoder returns a GopusFrameEncoder using the default Opus bitrate.
-func NewGopusFrameEncoder() *GopusFrameEncoder {
-	return &GopusFrameEncoder{bitrate: OpusBitrate}
+func NewGopusFrameEncoder(logger *slog.Logger) *GopusFrameEncoder {
+	return &GopusFrameEncoder{bitrate: OpusBitrate, logger: logger}
 }
 
 // NewGopusFrameEncoderWithBitrate returns a GopusFrameEncoder using the specified bitrate.
-func NewGopusFrameEncoderWithBitrate(bitrate int) *GopusFrameEncoder {
-	return &GopusFrameEncoder{bitrate: bitrate}
+func NewGopusFrameEncoderWithBitrate(bitrate int, logger *slog.Logger) *GopusFrameEncoder {
+	return &GopusFrameEncoder{bitrate: bitrate, logger: logger}
 }
 
 // EncodeFrames reads s16le PCM data from src and encodes it as Opus frames.
@@ -65,6 +67,8 @@ func (e *GopusFrameEncoder) EncodeFrames(src io.Reader, sampleRate, channels int
 		defer close(frameCh)
 		defer close(errCh)
 
+		e.logger.Debug("encoding opus frames", "sample_rate", sampleRate, "channels", channels, "bitrate", e.bitrate)
+
 		encoder, err := gopus.NewEncoder(sampleRate, channels, gopus.Audio)
 		if err != nil {
 			errCh <- fmt.Errorf("%w: creating encoder: %w", ErrOpusEncode, err)
@@ -80,6 +84,8 @@ func (e *GopusFrameEncoder) EncodeFrames(src io.Reader, sampleRate, channels int
 		pcmBuf := make([]byte, frameBytes)
 		// samples is pre-allocated to avoid a heap allocation on every frame.
 		samples := make([]int16, OpusFrameSamples*channels)
+
+		var frameCount int
 
 		for {
 			// Zero the buffer before each read so that partial frames are
@@ -103,6 +109,7 @@ func (e *GopusFrameEncoder) EncodeFrames(src io.Reader, sampleRate, channels int
 					return
 				}
 				frameCh <- encoded
+				frameCount++
 				break
 			}
 			if readErr != nil {
@@ -120,8 +127,10 @@ func (e *GopusFrameEncoder) EncodeFrames(src io.Reader, sampleRate, channels int
 				return
 			}
 			frameCh <- encoded
+			frameCount++
 		}
 
+		e.logger.Debug("opus encoding complete", "frames", frameCount)
 		errCh <- nil
 	}()
 

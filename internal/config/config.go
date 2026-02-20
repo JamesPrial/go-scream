@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -41,6 +43,7 @@ type Config struct {
 	Format     FormatType    `yaml:"format"`
 	DryRun     bool          `yaml:"dry_run"`
 	Verbose    bool          `yaml:"verbose"`
+	LogLevel   string        `yaml:"log_level"`
 }
 
 // rawConfig is an intermediate struct used for YAML unmarshaling. It captures
@@ -57,6 +60,7 @@ type rawConfig struct {
 	Format     FormatType  `yaml:"format"`
 	DryRun     bool        `yaml:"dry_run"`
 	Verbose    bool        `yaml:"verbose"`
+	LogLevel   string      `yaml:"log_level"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler so that duration fields are parsed
@@ -77,6 +81,7 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 	c.Format = raw.Format
 	c.DryRun = raw.DryRun
 	c.Verbose = raw.Verbose
+	c.LogLevel = raw.LogLevel
 
 	// Parse duration from the raw YAML node when present.
 	if raw.Duration.Value != "" {
@@ -140,6 +145,32 @@ func Merge(base, overlay Config) Config {
 	if overlay.Verbose {
 		result.Verbose = overlay.Verbose
 	}
+	if overlay.LogLevel != "" {
+		result.LogLevel = overlay.LogLevel
+	}
 
 	return result
+}
+
+// ParseLogLevel resolves the effective slog.Level from a Config.
+// If LogLevel is explicitly set, it is parsed (case-insensitive).
+// Otherwise, if Verbose is true, LevelInfo is returned.
+// The default is LevelWarn.
+func ParseLogLevel(cfg Config) slog.Level {
+	if cfg.LogLevel != "" {
+		switch strings.ToLower(cfg.LogLevel) {
+		case "debug":
+			return slog.LevelDebug
+		case "info":
+			return slog.LevelInfo
+		case "warn":
+			return slog.LevelWarn
+		case "error":
+			return slog.LevelError
+		}
+	}
+	if cfg.Verbose {
+		return slog.LevelInfo
+	}
+	return slog.LevelWarn
 }

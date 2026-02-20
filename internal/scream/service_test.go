@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"math"
 	"strings"
 	"sync"
@@ -15,6 +16,8 @@ import (
 	"github.com/JamesPrial/go-scream/internal/config"
 	"github.com/JamesPrial/go-scream/internal/discord"
 )
+
+var discardLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 // ---------------------------------------------------------------------------
 // Mock types
@@ -196,7 +199,7 @@ func validGenerateConfig() config.Config {
 
 // newTestService creates a Service with all mocks wired in.
 func newTestService(cfg config.Config, gen *mockGenerator, fEnc *mockFileEncoder, frEnc *mockFrameEncoder, pl *mockPlayer) *Service {
-	return NewServiceWithDeps(cfg, gen, fEnc, frEnc, pl)
+	return NewServiceWithDeps(cfg, gen, fEnc, frEnc, pl, discardLogger)
 }
 
 // ---------------------------------------------------------------------------
@@ -210,7 +213,7 @@ func Test_NewServiceWithDeps_ReturnsNonNil(t *testing.T) {
 	pl := &mockPlayer{}
 	cfg := validPlayConfig()
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, pl)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, pl, discardLogger)
 
 	if svc == nil {
 		t.Fatal("NewServiceWithDeps returned nil")
@@ -223,7 +226,7 @@ func Test_NewServiceWithDeps_NilPlayer(t *testing.T) {
 	frEnc := &mockFrameEncoder{}
 	cfg := validPlayConfig()
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	if svc == nil {
 		t.Fatal("NewServiceWithDeps returned nil even with nil player")
@@ -238,7 +241,7 @@ func Test_NewServiceWithDeps_StoresConfig(t *testing.T) {
 	cfg := validPlayConfig()
 	cfg.Preset = "whisper"
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, pl)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, pl, discardLogger)
 
 	if svc == nil {
 		t.Fatal("NewServiceWithDeps returned nil")
@@ -360,7 +363,7 @@ func Test_Play_Validation(t *testing.T) {
 			frEnc := &mockFrameEncoder{}
 			cfg := validPlayConfig()
 
-			svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, tt.player)
+			svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, tt.player, discardLogger)
 
 			err := svc.Play(context.Background(), tt.guildID, tt.channelID)
 			if err == nil {
@@ -449,7 +452,7 @@ func Test_Play_DryRun_NilPlayerOK(t *testing.T) {
 	cfg.DryRun = true
 
 	// nil player should not cause an error in dry run mode.
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	err := svc.Play(context.Background(), "guild-123", "chan-456")
 	if err != nil {
@@ -530,7 +533,7 @@ func Test_Generate_HappyPath_OGG(t *testing.T) {
 	cfg := validGenerateConfig()
 	cfg.Format = config.FormatOGG
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	var buf bytes.Buffer
 	err := svc.Generate(context.Background(), &buf)
@@ -553,7 +556,7 @@ func Test_Generate_HappyPath_WAV(t *testing.T) {
 	cfg := validGenerateConfig()
 	cfg.Format = config.FormatWAV
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	var buf bytes.Buffer
 	err := svc.Generate(context.Background(), &buf)
@@ -576,7 +579,7 @@ func Test_Generate_NoTokenRequired(t *testing.T) {
 	cfg := validGenerateConfig()
 	cfg.Token = "" // No token needed for generate-only mode.
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	var buf bytes.Buffer
 	err := svc.Generate(context.Background(), &buf)
@@ -592,7 +595,7 @@ func Test_Generate_GeneratorError(t *testing.T) {
 	frEnc := &mockFrameEncoder{}
 	cfg := validGenerateConfig()
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	var buf bytes.Buffer
 	err := svc.Generate(context.Background(), &buf)
@@ -615,7 +618,7 @@ func Test_Generate_FileEncoderError(t *testing.T) {
 	frEnc := &mockFrameEncoder{}
 	cfg := validGenerateConfig()
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	var buf bytes.Buffer
 	err := svc.Generate(context.Background(), &buf)
@@ -634,7 +637,7 @@ func Test_Generate_UnknownPreset(t *testing.T) {
 	cfg := validGenerateConfig()
 	cfg.Preset = "bogus-preset"
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	var buf bytes.Buffer
 	err := svc.Generate(context.Background(), &buf)
@@ -653,7 +656,7 @@ func Test_Generate_PlayerNotInvoked(t *testing.T) {
 	pl := &mockPlayer{}
 	cfg := validGenerateConfig()
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, pl)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, pl, discardLogger)
 
 	var buf bytes.Buffer
 	err := svc.Generate(context.Background(), &buf)
@@ -867,7 +870,7 @@ func Test_ResolveParams_VolumeApplied_Generate(t *testing.T) {
 	cfg.Preset = "classic"
 	cfg.Volume = 0.5
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	var buf bytes.Buffer
 	err := svc.Generate(context.Background(), &buf)
@@ -997,7 +1000,7 @@ func Test_Generate_GeneratorError_WrapsOriginal(t *testing.T) {
 	frEnc := &mockFrameEncoder{}
 	cfg := validGenerateConfig()
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	var buf bytes.Buffer
 	err := svc.Generate(context.Background(), &buf)
@@ -1016,7 +1019,7 @@ func Test_Generate_EncoderError_WrapsOriginal(t *testing.T) {
 	frEnc := &mockFrameEncoder{}
 	cfg := validGenerateConfig()
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 
 	var buf bytes.Buffer
 	err := svc.Generate(context.Background(), &buf)
@@ -1054,7 +1057,7 @@ func Benchmark_Generate_HappyPath(b *testing.B) {
 	frEnc := &mockFrameEncoder{}
 	cfg := validGenerateConfig()
 
-	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil)
+	svc := NewServiceWithDeps(cfg, gen, fEnc, frEnc, nil, discardLogger)
 	ctx := context.Background()
 
 	b.ResetTimer()

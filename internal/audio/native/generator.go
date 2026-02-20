@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 
 	"github.com/JamesPrial/go-scream/internal/audio"
@@ -12,11 +13,13 @@ import (
 
 // Generator implements audio.Generator using pure Go synthesis.
 // It produces s16le PCM audio with a configurable sample rate and channel count.
-type Generator struct{}
+type Generator struct {
+	logger *slog.Logger
+}
 
-// NewGenerator creates a new Generator.
-func NewGenerator() *Generator {
-	return &Generator{}
+// NewGenerator creates a new Generator using the provided logger.
+func NewGenerator(logger *slog.Logger) *Generator {
+	return &Generator{logger: logger}
 }
 
 // Generate produces PCM audio data in s16le format (little-endian signed 16-bit).
@@ -27,6 +30,8 @@ func (g *Generator) Generate(params audio.ScreamParams) (io.Reader, error) {
 	if err := params.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid params: %w", err)
 	}
+
+	g.logger.Debug("generating PCM audio", "duration", params.Duration, "sample_rate", params.SampleRate, "channels", params.Channels)
 
 	sampleRate := params.SampleRate
 	totalSamples := int(params.Duration.Seconds() * float64(sampleRate))
@@ -69,6 +74,7 @@ func (g *Generator) Generate(params audio.ScreamParams) (io.Reader, error) {
 		}
 	}
 
+	g.logger.Debug("PCM generation complete", "bytes", len(out))
 	return bytes.NewReader(out), nil
 }
 

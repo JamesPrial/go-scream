@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -45,15 +44,10 @@ func runPlay(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if cfg.Verbose {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Playing scream in guild %s", cfg.GuildID)
-		if channelID != "" {
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), " channel %s", channelID)
-		}
-		_, _ = fmt.Fprintln(cmd.OutOrStdout())
-	}
+	logger := setupLogger(cfg)
+	logger.Info("playing scream", "guild", cfg.GuildID, "channel", channelID)
 
-	return runWithService(cfg, func(ctx context.Context, svc *scream.Service) error {
+	return runWithService(cfg, logger, func(ctx context.Context, svc *scream.Service) error {
 		return svc.Play(ctx, cfg.GuildID, channelID)
 	})
 }

@@ -94,7 +94,7 @@ func makeFakeOpusFrames(count, frameSize int) [][]byte {
 func TestOGGEncoder_StartsWithOggS(t *testing.T) {
 	frames := makeFakeOpusFrames(10, 100)
 	mock := &mockOpusEncoder{frames: frames}
-	enc := NewOGGEncoderWithOpus(mock)
+	enc := NewOGGEncoderWithOpus(mock, discardLogger)
 
 	var buf bytes.Buffer
 	pcm := make([]byte, 3840*10) // enough PCM for 10 frames
@@ -118,7 +118,7 @@ func TestOGGEncoder_StartsWithOggS(t *testing.T) {
 func TestOGGEncoder_NonEmptyOutput(t *testing.T) {
 	frames := makeFakeOpusFrames(5, 80)
 	mock := &mockOpusEncoder{frames: frames}
-	enc := NewOGGEncoderWithOpus(mock)
+	enc := NewOGGEncoderWithOpus(mock, discardLogger)
 
 	var buf bytes.Buffer
 	pcm := make([]byte, 3840*5)
@@ -147,7 +147,7 @@ func TestOGGEncoder_InvalidSampleRate(t *testing.T) {
 			mock := &mockOpusEncoderValidating{
 				frames: makeFakeOpusFrames(1, 80),
 			}
-			enc := NewOGGEncoderWithOpus(mock)
+			enc := NewOGGEncoderWithOpus(mock, discardLogger)
 
 			var buf bytes.Buffer
 			pcm := make([]byte, 3840)
@@ -177,7 +177,7 @@ func TestOGGEncoder_InvalidChannels(t *testing.T) {
 			mock := &mockOpusEncoderValidating{
 				frames: makeFakeOpusFrames(1, 80),
 			}
-			enc := NewOGGEncoderWithOpus(mock)
+			enc := NewOGGEncoderWithOpus(mock, discardLogger)
 
 			var buf bytes.Buffer
 			pcm := make([]byte, 3840)
@@ -198,7 +198,7 @@ func TestOGGEncoder_OpusError(t *testing.T) {
 		frames: nil, // no frames, just an error
 		err:    opusErr,
 	}
-	enc := NewOGGEncoderWithOpus(mock)
+	enc := NewOGGEncoderWithOpus(mock, discardLogger)
 
 	var buf bytes.Buffer
 	pcm := make([]byte, 3840)
@@ -229,7 +229,7 @@ func TestOGGEncoder_EmptyFrames(t *testing.T) {
 		frames: nil, // no frames
 		err:    nil, // no error
 	}
-	enc := NewOGGEncoderWithOpus(mock)
+	enc := NewOGGEncoderWithOpus(mock, discardLogger)
 
 	var buf bytes.Buffer
 	pcm := make([]byte, 0)
@@ -249,7 +249,7 @@ func TestOGGEncoder_EmptyFrames(t *testing.T) {
 func TestOGGEncoder_WriterError(t *testing.T) {
 	frames := makeFakeOpusFrames(5, 100)
 	mock := &mockOpusEncoder{frames: frames}
-	enc := NewOGGEncoderWithOpus(mock)
+	enc := NewOGGEncoderWithOpus(mock, discardLogger)
 
 	w := &failOGGWriter{err: io.ErrClosedPipe, failAfter: 0}
 	pcm := make([]byte, 3840*5)
@@ -275,7 +275,7 @@ func TestNewOGGEncoder_NotNil(t *testing.T) {
 		}
 	}()
 
-	enc := NewOGGEncoder()
+	enc := NewOGGEncoder(discardLogger)
 	if enc == nil {
 		t.Fatal("NewOGGEncoder() returned nil")
 	}
@@ -283,7 +283,7 @@ func TestNewOGGEncoder_NotNil(t *testing.T) {
 
 func TestNewOGGEncoderWithOpus_NotNil(t *testing.T) {
 	mock := &mockOpusEncoder{}
-	enc := NewOGGEncoderWithOpus(mock)
+	enc := NewOGGEncoderWithOpus(mock, discardLogger)
 	if enc == nil {
 		t.Fatal("NewOGGEncoderWithOpus() returned nil")
 	}
@@ -309,7 +309,7 @@ func TestOGGEncoder_VariousFrameCounts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			frames := makeFakeOpusFrames(tt.frameCount, tt.frameSize)
 			mock := &mockOpusEncoder{frames: frames}
-			enc := NewOGGEncoderWithOpus(mock)
+			enc := NewOGGEncoderWithOpus(mock, discardLogger)
 
 			var buf bytes.Buffer
 			pcm := make([]byte, 3840*tt.frameCount)
@@ -357,7 +357,7 @@ func (w *failOGGWriter) Write(p []byte) (int, error) {
 func BenchmarkOGGEncoder_150Frames(b *testing.B) {
 	frames := makeFakeOpusFrames(150, 100)
 	mock := &mockOpusEncoder{frames: frames}
-	enc := NewOGGEncoderWithOpus(mock)
+	enc := NewOGGEncoderWithOpus(mock, discardLogger)
 	pcm := make([]byte, 3840*150)
 
 	b.ResetTimer()

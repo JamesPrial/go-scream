@@ -1,5 +1,7 @@
 package config
 
+import "strings"
+
 // knownPresets lists every valid preset name accepted by Validate.
 // This list must be kept in sync with the preset constants defined in
 // internal/audio/presets.go (audio.AllPresets).
@@ -21,6 +23,7 @@ var knownPresets = []string{
 //   - Duration must be > 0
 //   - Volume must be >= 0.0 and <= 1.0
 //   - Format must be FormatOGG or FormatWAV
+//   - LogLevel, if non-empty, must be one of: debug, info, warn, error
 func Validate(cfg Config) error {
 	if cfg.Backend != BackendNative && cfg.Backend != BackendFFmpeg {
 		return ErrInvalidBackend
@@ -42,6 +45,15 @@ func Validate(cfg Config) error {
 
 	if cfg.Format != FormatOGG && cfg.Format != FormatWAV {
 		return ErrInvalidFormat
+	}
+
+	if cfg.LogLevel != "" {
+		switch strings.ToLower(cfg.LogLevel) {
+		case "debug", "info", "warn", "error":
+			// valid
+		default:
+			return ErrInvalidLogLevel
+		}
 	}
 
 	return nil

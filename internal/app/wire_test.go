@@ -1,6 +1,8 @@
 package app
 
 import (
+	"io"
+	"log/slog"
 	"os/exec"
 	"testing"
 
@@ -8,6 +10,8 @@ import (
 	"github.com/JamesPrial/go-scream/internal/config"
 	"github.com/JamesPrial/go-scream/internal/encoding"
 )
+
+var discardLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 // skipIfNoFFmpeg skips the test if ffmpeg is not available on PATH.
 func skipIfNoFFmpeg(t *testing.T) {
@@ -23,7 +27,7 @@ func skipIfNoFFmpeg(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestNewGenerator_NativeBackend(t *testing.T) {
-	gen, err := NewGenerator(string(config.BackendNative))
+	gen, err := NewGenerator(string(config.BackendNative), discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator(%q) error = %v, want nil", config.BackendNative, err)
 	}
@@ -35,7 +39,7 @@ func TestNewGenerator_NativeBackend(t *testing.T) {
 func TestNewGenerator_FFmpegBackend_Available(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator(string(config.BackendFFmpeg))
+	gen, err := NewGenerator(string(config.BackendFFmpeg), discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator(%q) error = %v, want nil", config.BackendFFmpeg, err)
 	}
@@ -69,7 +73,7 @@ func TestNewGenerator_UnknownBackend_FallsBackToNative(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gen, err := NewGenerator(tt.backend)
+			gen, err := NewGenerator(tt.backend, discardLogger)
 			if err != nil {
 				t.Fatalf("NewGenerator(%q) error = %v, want nil", tt.backend, err)
 			}
@@ -85,7 +89,7 @@ func TestNewGenerator_UnknownBackend_FallsBackToNative(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestNewFileEncoder_OGG(t *testing.T) {
-	enc := NewFileEncoder(string(config.FormatOGG))
+	enc := NewFileEncoder(string(config.FormatOGG), discardLogger)
 	if enc == nil {
 		t.Fatal("NewFileEncoder(\"ogg\") returned nil")
 	}
@@ -95,7 +99,7 @@ func TestNewFileEncoder_OGG(t *testing.T) {
 }
 
 func TestNewFileEncoder_WAV(t *testing.T) {
-	enc := NewFileEncoder(string(config.FormatWAV))
+	enc := NewFileEncoder(string(config.FormatWAV), discardLogger)
 	if enc == nil {
 		t.Fatal("NewFileEncoder(\"wav\") returned nil")
 	}
@@ -118,7 +122,7 @@ func TestNewFileEncoder_DefaultsToOGG(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			enc := NewFileEncoder(tt.format)
+			enc := NewFileEncoder(tt.format, discardLogger)
 			if enc == nil {
 				t.Fatalf("NewFileEncoder(%q) returned nil", tt.format)
 			}
@@ -132,7 +136,7 @@ func TestNewFileEncoder_DefaultsToOGG(t *testing.T) {
 func TestNewFileEncoder_NeverReturnsNil(t *testing.T) {
 	formats := []string{"ogg", "wav", "", "flac", "mp3", "aac"}
 	for _, f := range formats {
-		enc := NewFileEncoder(f)
+		enc := NewFileEncoder(f, discardLogger)
 		if enc == nil {
 			t.Errorf("NewFileEncoder(%q) returned nil, should never return nil", f)
 		}
@@ -143,8 +147,8 @@ func TestNewFileEncoder_ImplementsFileEncoder(t *testing.T) {
 	// Verify that NewFileEncoder returns a value assignable to FileEncoder.
 	// The return type of NewFileEncoder is encoding.FileEncoder, so any
 	// assignment is already guaranteed at compile time by the signature.
-	_ = NewFileEncoder(string(config.FormatOGG))
-	_ = NewFileEncoder(string(config.FormatWAV))
+	_ = NewFileEncoder(string(config.FormatOGG), discardLogger)
+	_ = NewFileEncoder(string(config.FormatWAV), discardLogger)
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +205,7 @@ func TestNewGenerator_TableDriven(t *testing.T) {
 				skipIfNoFFmpeg(t)
 			}
 
-			gen, err := NewGenerator(tt.backend)
+			gen, err := NewGenerator(tt.backend, discardLogger)
 
 			if tt.wantErr && err == nil {
 				t.Fatal("NewGenerator() expected error, got nil")
@@ -258,7 +262,7 @@ func TestNewFileEncoder_TableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			enc := NewFileEncoder(tt.format)
+			enc := NewFileEncoder(tt.format, discardLogger)
 			if enc == nil {
 				t.Fatal("NewFileEncoder() returned nil")
 			}

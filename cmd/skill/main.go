@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -94,8 +95,13 @@ func main() {
 	cfg.Token = token
 	cfg.GuildID = guildID
 
+	level := config.ParseLogLevel(cfg)
+	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
 	if err := config.Validate(cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "skill: invalid configuration: %v\n", err)
+		slog.Error("invalid configuration", "error", err)
 		os.Exit(1)
 	}
 
@@ -103,29 +109,29 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	gen, err := app.NewGenerator(string(cfg.Backend))
+	gen, err := app.NewGenerator(string(cfg.Backend), logger)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "skill: %v\n", err)
+		slog.Error("failed to create generator", "error", err)
 		os.Exit(1)
 	}
 
-	frameEnc := encoding.NewGopusFrameEncoder()
-	fileEnc := app.NewFileEncoder(string(cfg.Format))
+	frameEnc := encoding.NewGopusFrameEncoder(logger)
+	fileEnc := app.NewFileEncoder(string(cfg.Format), logger)
 
-	player, sessionCloser, err := app.NewDiscordDeps(cfg.Token)
+	player, sessionCloser, err := app.NewDiscordDeps(cfg.Token, logger)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "skill: %v\n", err)
+		slog.Error("failed to create discord session", "error", err)
 		os.Exit(1)
 	}
 	defer func() {
 		if cerr := sessionCloser.Close(); cerr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to close discord session: %v\n", cerr)
+			slog.Warn("failed to close discord session", "error", cerr)
 		}
 	}()
 
-	svc := scream.NewServiceWithDeps(cfg, gen, fileEnc, frameEnc, player)
+	svc := scream.NewServiceWithDeps(cfg, gen, fileEnc, frameEnc, player, logger)
 	if err := svc.Play(ctx, cfg.GuildID, channelID); err != nil {
-		fmt.Fprintf(os.Stderr, "skill: %v\n", err)
+		slog.Error("playback failed", "error", err)
 		os.Exit(1)
 	}
 }

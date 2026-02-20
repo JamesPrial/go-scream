@@ -3,6 +3,8 @@ package encoding
 import (
 	"bytes"
 	"errors"
+	"io"
+	"log/slog"
 	"testing"
 )
 
@@ -18,6 +20,8 @@ func TestGopusFrameEncoder_ImplementsInterface(t *testing.T) {
 // CGO skip helper
 // ---------------------------------------------------------------------------
 
+var discardLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+
 func skipIfNoOpus(t *testing.T) {
 	t.Helper()
 	// Try creating an encoder; if gopus/libopus isn't available, skip.
@@ -26,7 +30,7 @@ func skipIfNoOpus(t *testing.T) {
 			t.Skip("opus not available: ", r)
 		}
 	}()
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	if enc == nil {
 		t.Skip("opus not available: NewGopusFrameEncoder returned nil")
 	}
@@ -79,7 +83,7 @@ func TestGopusFrameEncoder_FrameCount_3s(t *testing.T) {
 	}
 
 	pcm := makeSilentPCM(pcmSize)
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), 48000, 2)
 
 	frames, err := drainFrames(t, frameCh, errCh)
@@ -98,7 +102,7 @@ func TestGopusFrameEncoder_FrameCount_1Frame(t *testing.T) {
 	// Exactly 1 frame of stereo 48kHz:
 	// 960 samples * 2 channels * 2 bytes = 3840 bytes
 	pcm := makeSilentPCM(3840)
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), 48000, 2)
 
 	frames, err := drainFrames(t, frameCh, errCh)
@@ -118,7 +122,7 @@ func TestGopusFrameEncoder_PartialFrame(t *testing.T) {
 	// 1.5 * 960 = 1440 samples * 2 channels * 2 bytes = 5760 bytes
 	// Should yield 2 frames (the partial frame is zero-padded)
 	pcm := makeSilentPCM(5760)
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), 48000, 2)
 
 	frames, err := drainFrames(t, frameCh, errCh)
@@ -136,7 +140,7 @@ func TestGopusFrameEncoder_SingleSample(t *testing.T) {
 
 	// 1 stereo sample = 4 bytes. Should produce 1 frame (heavily zero-padded).
 	pcm := makeSilentPCM(4)
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), 48000, 2)
 
 	frames, err := drainFrames(t, frameCh, errCh)
@@ -153,7 +157,7 @@ func TestGopusFrameEncoder_EmptyInput(t *testing.T) {
 	skipIfNoOpus(t)
 
 	pcm := makeSilentPCM(0)
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), 48000, 2)
 
 	frames, err := drainFrames(t, frameCh, errCh)
@@ -171,7 +175,7 @@ func TestGopusFrameEncoder_FrameSizeBounds(t *testing.T) {
 
 	// 0.5 seconds of stereo 48kHz = 25 frames
 	pcm := makeSilentPCM(pcmBytesForDuration(0.5, 48000, 2))
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), 48000, 2)
 
 	frames, err := drainFrames(t, frameCh, errCh)
@@ -195,7 +199,7 @@ func TestGopusFrameEncoder_MonoEncoding(t *testing.T) {
 	// 1 frame of mono 48kHz:
 	// 960 samples * 1 channel * 2 bytes = 1920 bytes
 	pcm := makeSilentPCM(1920)
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), 48000, 1)
 
 	frames, err := drainFrames(t, frameCh, errCh)
@@ -230,7 +234,7 @@ func TestGopusFrameEncoder_InvalidSampleRate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			enc := NewGopusFrameEncoder()
+			enc := NewGopusFrameEncoder(discardLogger)
 			pcm := makeSilentPCM(3840)
 			frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), tt.sampleRate, 2)
 
@@ -261,7 +265,7 @@ func TestGopusFrameEncoder_InvalidChannels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			enc := NewGopusFrameEncoder()
+			enc := NewGopusFrameEncoder(discardLogger)
 			pcm := makeSilentPCM(3840)
 			frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), 48000, tt.channels)
 
@@ -286,7 +290,7 @@ func TestGopusFrameEncoder_ChannelsClosed(t *testing.T) {
 	skipIfNoOpus(t)
 
 	pcm := makeSilentPCM(3840) // 1 frame
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), 48000, 2)
 
 	// Drain all frames via range (blocks until frameCh is closed)
@@ -308,7 +312,7 @@ func TestGopusFrameEncoder_ChannelsClosed_OnError(t *testing.T) {
 
 	// Use invalid params to trigger an error path
 	pcm := makeSilentPCM(3840)
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	frameCh, errCh := enc.EncodeFrames(bytes.NewReader(pcm), 0, 2) // invalid sample rate
 
 	// Frame channel should eventually close even on error
@@ -334,7 +338,7 @@ func TestGopusFrameEncoder_ChannelsClosed_OnError(t *testing.T) {
 
 func TestNewGopusFrameEncoder_NotNil(t *testing.T) {
 	skipIfNoOpus(t)
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	if enc == nil {
 		t.Fatal("NewGopusFrameEncoder() returned nil")
 	}
@@ -342,7 +346,7 @@ func TestNewGopusFrameEncoder_NotNil(t *testing.T) {
 
 func TestNewGopusFrameEncoderWithBitrate_NotNil(t *testing.T) {
 	skipIfNoOpus(t)
-	enc := NewGopusFrameEncoderWithBitrate(128000)
+	enc := NewGopusFrameEncoderWithBitrate(128000, discardLogger)
 	if enc == nil {
 		t.Fatal("NewGopusFrameEncoderWithBitrate(128000) returned nil")
 	}
@@ -360,14 +364,14 @@ func BenchmarkGopusFrameEncoder_1s_Stereo48k(b *testing.B) {
 				b.Skip("opus not available")
 			}
 		}()
-		enc := NewGopusFrameEncoder()
+		enc := NewGopusFrameEncoder(discardLogger)
 		if enc == nil {
 			b.Skip("opus not available")
 		}
 	}()
 
 	pcm := makeSilentPCM(pcmBytesForDuration(1.0, 48000, 2))
-	enc := NewGopusFrameEncoder()
+	enc := NewGopusFrameEncoder(discardLogger)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {

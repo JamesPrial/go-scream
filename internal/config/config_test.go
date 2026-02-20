@@ -1,6 +1,9 @@
 package config
 
 import (
+	"log/slog"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -55,6 +58,11 @@ func TestDefault_ReturnsExpectedValues(t *testing.T) {
 	if cfg.Verbose != false {
 		t.Errorf("Default().Verbose = %v, want false", cfg.Verbose)
 	}
+
+	// LogLevel defaults to empty.
+	if cfg.LogLevel != "" {
+		t.Errorf("Default().LogLevel = %q, want %q", cfg.LogLevel, "")
+	}
 }
 
 func TestDefault_BackendConstant(t *testing.T) {
@@ -91,6 +99,7 @@ func TestMerge_ZeroOverlayPreservesBase(t *testing.T) {
 		Format:     FormatWAV,
 		DryRun:     true,
 		Verbose:    true,
+		LogLevel:   "debug",
 	}
 	overlay := Config{} // all zero values
 
@@ -126,6 +135,9 @@ func TestMerge_ZeroOverlayPreservesBase(t *testing.T) {
 	if got.Verbose != base.Verbose {
 		t.Errorf("Merge Verbose = %v, want %v", got.Verbose, base.Verbose)
 	}
+	if got.LogLevel != base.LogLevel {
+		t.Errorf("Merge LogLevel = %q, want %q", got.LogLevel, base.LogLevel)
+	}
 }
 
 func TestMerge_NonZeroOverlayWins(t *testing.T) {
@@ -141,6 +153,7 @@ func TestMerge_NonZeroOverlayWins(t *testing.T) {
 		Format:     FormatWAV,
 		DryRun:     true,
 		Verbose:    true,
+		LogLevel:   "error",
 	}
 
 	got := Merge(base, overlay)
@@ -174,6 +187,9 @@ func TestMerge_NonZeroOverlayWins(t *testing.T) {
 	}
 	if got.Verbose != true {
 		t.Errorf("Merge Verbose = %v, want true", got.Verbose)
+	}
+	if got.LogLevel != "error" {
+		t.Errorf("Merge LogLevel = %q, want %q", got.LogLevel, "error")
 	}
 }
 
@@ -330,6 +346,9 @@ func TestMerge_BothZero(t *testing.T) {
 	if got.Volume != 0 {
 		t.Errorf("Volume = %f, want 0", got.Volume)
 	}
+	if got.LogLevel != "" {
+		t.Errorf("LogLevel = %q, want empty", got.LogLevel)
+	}
 }
 
 func TestMerge_DoesNotMutateInputs(t *testing.T) {
@@ -346,5 +365,197 @@ func TestMerge_DoesNotMutateInputs(t *testing.T) {
 	}
 	if overlay.Token != overlayCopy.Token {
 		t.Error("Merge mutated the overlay config")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Merge() — LogLevel field
+// ---------------------------------------------------------------------------
+
+func TestMerge_LogLevel(t *testing.T) {
+	tests := []struct {
+		name         string
+		baseLogLevel string
+		overLogLevel string
+		wantLogLevel string
+	}{
+		{
+			name:         "base has LogLevel, overlay empty: base wins",
+			baseLogLevel: "debug",
+			overLogLevel: "",
+			wantLogLevel: "debug",
+		},
+		{
+			name:         "base empty, overlay has LogLevel: overlay wins",
+			baseLogLevel: "",
+			overLogLevel: "warn",
+			wantLogLevel: "warn",
+		},
+		{
+			name:         "both have LogLevel: overlay wins",
+			baseLogLevel: "info",
+			overLogLevel: "error",
+			wantLogLevel: "error",
+		},
+		{
+			name:         "both empty: stays empty",
+			baseLogLevel: "",
+			overLogLevel: "",
+			wantLogLevel: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := Config{LogLevel: tt.baseLogLevel}
+			overlay := Config{LogLevel: tt.overLogLevel}
+			got := Merge(base, overlay)
+			if got.LogLevel != tt.wantLogLevel {
+				t.Errorf("Merge() LogLevel = %q, want %q", got.LogLevel, tt.wantLogLevel)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// UnmarshalYAML — LogLevel field
+// ---------------------------------------------------------------------------
+
+func TestUnmarshalYAML_LogLevel(t *testing.T) {
+	tests := []struct {
+		name         string
+		yaml         string
+		wantLogLevel string
+	}{
+		{
+			name:         "log_level debug",
+			yaml:         `log_level: debug`,
+			wantLogLevel: "debug",
+		},
+		{
+			name:         "log_level info",
+			yaml:         `log_level: info`,
+			wantLogLevel: "info",
+		},
+		{
+			name:         "log_level warn",
+			yaml:         `log_level: warn`,
+			wantLogLevel: "warn",
+		},
+		{
+			name:         "log_level error",
+			yaml:         `log_level: error`,
+			wantLogLevel: "error",
+		},
+		{
+			name:         "log_level absent stays empty",
+			yaml:         `token: "tok"`,
+			wantLogLevel: "",
+		},
+		{
+			name:         "log_level uppercase DEBUG",
+			yaml:         `log_level: DEBUG`,
+			wantLogLevel: "DEBUG",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "cfg.yaml")
+			if err := os.WriteFile(path, []byte(tt.yaml), 0644); err != nil {
+				t.Fatalf("failed to write test config: %v", err)
+			}
+
+			cfg, err := Load(path)
+			if err != nil {
+				t.Fatalf("Load() unexpected error: %v", err)
+			}
+			if cfg.LogLevel != tt.wantLogLevel {
+				t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, tt.wantLogLevel)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ParseLogLevel()
+// ---------------------------------------------------------------------------
+
+func TestParseLogLevel(t *testing.T) {
+	tests := []struct {
+		name      string
+		cfg       Config
+		wantLevel slog.Level
+	}{
+		{
+			name:      "LogLevel debug returns LevelDebug",
+			cfg:       Config{LogLevel: "debug"},
+			wantLevel: slog.LevelDebug,
+		},
+		{
+			name:      "LogLevel info returns LevelInfo",
+			cfg:       Config{LogLevel: "info"},
+			wantLevel: slog.LevelInfo,
+		},
+		{
+			name:      "LogLevel warn returns LevelWarn",
+			cfg:       Config{LogLevel: "warn"},
+			wantLevel: slog.LevelWarn,
+		},
+		{
+			name:      "LogLevel error returns LevelError",
+			cfg:       Config{LogLevel: "error"},
+			wantLevel: slog.LevelError,
+		},
+		{
+			name:      "LogLevel DEBUG (case-insensitive) returns LevelDebug",
+			cfg:       Config{LogLevel: "DEBUG"},
+			wantLevel: slog.LevelDebug,
+		},
+		{
+			name:      "LogLevel Info (mixed case) returns LevelInfo",
+			cfg:       Config{LogLevel: "Info"},
+			wantLevel: slog.LevelInfo,
+		},
+		{
+			name:      "LogLevel WARN (uppercase) returns LevelWarn",
+			cfg:       Config{LogLevel: "WARN"},
+			wantLevel: slog.LevelWarn,
+		},
+		{
+			name:      "LogLevel empty + Verbose=true returns LevelInfo",
+			cfg:       Config{LogLevel: "", Verbose: true},
+			wantLevel: slog.LevelInfo,
+		},
+		{
+			name:      "LogLevel empty + Verbose=false returns LevelWarn (default)",
+			cfg:       Config{LogLevel: "", Verbose: false},
+			wantLevel: slog.LevelWarn,
+		},
+		{
+			name:      "LogLevel info + Verbose=false: LogLevel takes precedence",
+			cfg:       Config{LogLevel: "info", Verbose: false},
+			wantLevel: slog.LevelInfo,
+		},
+		{
+			name:      "LogLevel debug + Verbose=true: LogLevel takes precedence",
+			cfg:       Config{LogLevel: "debug", Verbose: true},
+			wantLevel: slog.LevelDebug,
+		},
+		{
+			name:      "LogLevel error + Verbose=true: LogLevel takes precedence over Verbose",
+			cfg:       Config{LogLevel: "error", Verbose: true},
+			wantLevel: slog.LevelError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ParseLogLevel(tt.cfg)
+			if got != tt.wantLevel {
+				t.Errorf("ParseLogLevel() = %v, want %v", got, tt.wantLevel)
+			}
+		})
 	}
 }

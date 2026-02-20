@@ -16,7 +16,7 @@ func TestFindPopulatedChannel_OneUser(t *testing.T) {
 		},
 	}
 
-	got, err := FindPopulatedChannel(sess, "g1", "bot")
+	got, err := FindPopulatedChannel(sess, "g1", "bot", discardLogger)
 	if err != nil {
 		t.Fatalf("FindPopulatedChannel() unexpected error: %v", err)
 	}
@@ -33,7 +33,7 @@ func TestFindPopulatedChannel_MultipleUsers(t *testing.T) {
 		},
 	}
 
-	got, err := FindPopulatedChannel(sess, "g1", "bot")
+	got, err := FindPopulatedChannel(sess, "g1", "bot", discardLogger)
 	if err != nil {
 		t.Fatalf("FindPopulatedChannel() unexpected error: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestFindPopulatedChannel_MultipleChannels(t *testing.T) {
 		},
 	}
 
-	got, err := FindPopulatedChannel(sess, "g1", "bot")
+	got, err := FindPopulatedChannel(sess, "g1", "bot", discardLogger)
 	if err != nil {
 		t.Fatalf("FindPopulatedChannel() unexpected error: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestFindPopulatedChannel_OnlyBot(t *testing.T) {
 		},
 	}
 
-	_, err := FindPopulatedChannel(sess, "g1", "bot")
+	_, err := FindPopulatedChannel(sess, "g1", "bot", discardLogger)
 	if !errors.Is(err, ErrNoPopulatedChannel) {
 		t.Errorf("FindPopulatedChannel() error = %v, want ErrNoPopulatedChannel", err)
 	}
@@ -81,7 +81,7 @@ func TestFindPopulatedChannel_BotAndUser(t *testing.T) {
 		},
 	}
 
-	got, err := FindPopulatedChannel(sess, "g1", "bot")
+	got, err := FindPopulatedChannel(sess, "g1", "bot", discardLogger)
 	if err != nil {
 		t.Fatalf("FindPopulatedChannel() unexpected error: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestFindPopulatedChannel_BotInOneUserInAnother(t *testing.T) {
 		},
 	}
 
-	got, err := FindPopulatedChannel(sess, "g1", "bot")
+	got, err := FindPopulatedChannel(sess, "g1", "bot", discardLogger)
 	if err != nil {
 		t.Fatalf("FindPopulatedChannel() unexpected error: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestFindPopulatedChannel_Empty(t *testing.T) {
 		voiceStates: []*VoiceState{},
 	}
 
-	_, err := FindPopulatedChannel(sess, "g1", "bot")
+	_, err := FindPopulatedChannel(sess, "g1", "bot", discardLogger)
 	if !errors.Is(err, ErrNoPopulatedChannel) {
 		t.Errorf("FindPopulatedChannel() error = %v, want ErrNoPopulatedChannel", err)
 	}
@@ -121,7 +121,7 @@ func TestFindPopulatedChannel_Empty(t *testing.T) {
 func TestFindPopulatedChannel_EmptyGuildID(t *testing.T) {
 	sess := &mockSession{}
 
-	_, err := FindPopulatedChannel(sess, "", "bot")
+	_, err := FindPopulatedChannel(sess, "", "bot", discardLogger)
 	if !errors.Is(err, ErrEmptyGuildID) {
 		t.Errorf("FindPopulatedChannel() error = %v, want ErrEmptyGuildID", err)
 	}
@@ -132,7 +132,7 @@ func TestFindPopulatedChannel_StateError(t *testing.T) {
 		stateErr: errors.New("underlying state error"),
 	}
 
-	_, err := FindPopulatedChannel(sess, "g1", "bot")
+	_, err := FindPopulatedChannel(sess, "g1", "bot", discardLogger)
 	if !errors.Is(err, ErrGuildStateFailed) {
 		t.Errorf("FindPopulatedChannel() error = %v, want ErrGuildStateFailed", err)
 	}
@@ -200,7 +200,7 @@ func TestFindPopulatedChannel_Cases(t *testing.T) {
 				stateErr:    tt.stateErr,
 			}
 
-			got, err := FindPopulatedChannel(sess, tt.guildID, tt.botUserID)
+			got, err := FindPopulatedChannel(sess, tt.guildID, tt.botUserID, discardLogger)
 
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -238,6 +238,6 @@ func BenchmarkFindPopulatedChannel_100States(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = FindPopulatedChannel(sess, "g1", "bot-id-that-matches-none")
+		_, _ = FindPopulatedChannel(sess, "g1", "bot-id-that-matches-none", discardLogger)
 	}
 }

@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/exec"
 	"testing"
 	"time"
 
 	"github.com/JamesPrial/go-scream/internal/audio"
 )
+
+var discardLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 // skipIfNoFFmpeg skips the test if ffmpeg is not available on PATH.
 func skipIfNoFFmpeg(t *testing.T) {
@@ -54,7 +57,7 @@ var _ audio.Generator = (*Generator)(nil)
 func TestNewGenerator_Success(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v, want nil", err)
 	}
@@ -64,7 +67,7 @@ func TestNewGenerator_Success(t *testing.T) {
 }
 
 func TestNewGeneratorWithPath_NotNil(t *testing.T) {
-	gen := NewGeneratorWithPath("/usr/bin/ffmpeg")
+	gen := NewGeneratorWithPath("/usr/bin/ffmpeg", discardLogger)
 	if gen == nil {
 		t.Fatal("NewGeneratorWithPath() returned nil")
 	}
@@ -91,7 +94,7 @@ func TestNewGenerator_NoFFmpegOnPath(t *testing.T) {
 func TestGenerator_CorrectByteCount(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -117,7 +120,7 @@ func TestGenerator_CorrectByteCount(t *testing.T) {
 func TestGenerator_NonSilent(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -148,7 +151,7 @@ func TestGenerator_NonSilent(t *testing.T) {
 func TestGenerator_AllPresets(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -181,7 +184,7 @@ func TestGenerator_AllPresets(t *testing.T) {
 func TestGenerator_AllNamedPresets(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -217,7 +220,7 @@ func TestGenerator_AllNamedPresets(t *testing.T) {
 func TestGenerator_InvalidDuration(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -237,7 +240,7 @@ func TestGenerator_InvalidDuration(t *testing.T) {
 func TestGenerator_NegativeDuration(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -257,7 +260,7 @@ func TestGenerator_NegativeDuration(t *testing.T) {
 func TestGenerator_InvalidSampleRate(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -277,7 +280,7 @@ func TestGenerator_InvalidSampleRate(t *testing.T) {
 func TestGenerator_NegativeSampleRate(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -297,7 +300,7 @@ func TestGenerator_NegativeSampleRate(t *testing.T) {
 func TestGenerator_InvalidChannels(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -317,7 +320,7 @@ func TestGenerator_InvalidChannels(t *testing.T) {
 func TestGenerator_ZeroChannels(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -335,7 +338,7 @@ func TestGenerator_ZeroChannels(t *testing.T) {
 }
 
 func TestGenerator_BadBinaryPath(t *testing.T) {
-	gen := NewGeneratorWithPath("/nonexistent/ffmpeg")
+	gen := NewGeneratorWithPath("/nonexistent/ffmpeg", discardLogger)
 
 	params := testParams()
 	_, err := gen.Generate(params)
@@ -350,7 +353,7 @@ func TestGenerator_BadBinaryPath(t *testing.T) {
 func TestGenerator_InvalidAmplitude(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -370,7 +373,7 @@ func TestGenerator_InvalidAmplitude(t *testing.T) {
 func TestGenerator_InvalidCrusherBits(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -390,7 +393,7 @@ func TestGenerator_InvalidCrusherBits(t *testing.T) {
 func TestGenerator_InvalidLimiterLevel(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -412,7 +415,7 @@ func TestGenerator_InvalidLimiterLevel(t *testing.T) {
 func TestGenerator_EvenByteCount(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -436,7 +439,7 @@ func TestGenerator_EvenByteCount(t *testing.T) {
 func TestGenerator_StereoAligned(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -462,7 +465,7 @@ func TestGenerator_StereoAligned(t *testing.T) {
 func TestGenerator_MonoOutput(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -491,7 +494,7 @@ func TestGenerator_MonoOutput(t *testing.T) {
 func TestGenerator_DeterministicOutput(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator() error = %v", err)
 	}
@@ -544,7 +547,7 @@ func BenchmarkGenerator_1s(b *testing.B) {
 		b.Skip("ffmpeg not available")
 	}
 
-	gen, err := NewGenerator()
+	gen, err := NewGenerator(discardLogger)
 	if err != nil {
 		b.Fatalf("NewGenerator() error = %v", err)
 	}

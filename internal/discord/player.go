@@ -3,6 +3,7 @@ package discord
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -20,14 +21,15 @@ type VoicePlayer interface {
 // Player implements VoicePlayer using a Session.
 type Player struct {
 	session Session
+	logger  *slog.Logger
 }
 
 // Compile-time interface check.
 var _ VoicePlayer = (*Player)(nil)
 
-// NewPlayer returns a VoicePlayer using the provided Session.
-func NewPlayer(session Session) *Player {
-	return &Player{session: session}
+// NewPlayer returns a VoicePlayer using the provided Session and logger.
+func NewPlayer(session Session, logger *slog.Logger) *Player {
+	return &Player{session: session, logger: logger}
 }
 
 // Play joins the specified voice channel, streams all frames from the frames
@@ -53,6 +55,8 @@ func (p *Player) Play(ctx context.Context, guildID, channelID string, frames <-c
 		return err
 	}
 
+	p.logger.Debug("joining voice channel", "guild", guildID, "channel", channelID)
+
 	// Join the voice channel.
 	vc, err := p.session.ChannelVoiceJoin(guildID, channelID, false, true)
 	if err != nil {
@@ -69,6 +73,8 @@ func (p *Player) Play(ctx context.Context, guildID, channelID string, frames <-c
 		return fmt.Errorf("%w: %w", ErrSpeakingFailed, err)
 	}
 
+	p.logger.Debug("voice channel joined, sending frames")
+
 	opusSend := vc.OpusSendChannel()
 
 	// Frame loop with double-select pattern for graceful context cancellation.
@@ -76,6 +82,7 @@ loop:
 	for {
 		select {
 		case <-ctx.Done():
+			p.logger.Debug("playback cancelled, sending silence")
 			silenceCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			sendSilence(silenceCtx, opusSend)
 			cancel()
@@ -88,6 +95,7 @@ loop:
 			select {
 			case opusSend <- frame:
 			case <-ctx.Done():
+				p.logger.Debug("playback cancelled, sending silence")
 				silenceCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 				sendSilence(silenceCtx, opusSend)
 				cancel()
@@ -96,6 +104,8 @@ loop:
 			}
 		}
 	}
+
+	p.logger.Debug("playback complete, sending silence")
 
 	// Normal completion: send silence and stop speaking.
 	sendSilence(context.Background(), opusSend)

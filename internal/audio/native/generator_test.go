@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/JamesPrial/go-scream/internal/audio"
 )
+
+var discardLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 // testScreamParams returns a minimal valid ScreamParams for generator tests.
 func testScreamParams() audio.ScreamParams {
@@ -35,7 +38,7 @@ func testScreamParams() audio.ScreamParams {
 }
 
 func TestGenerator_CorrectByteCount(t *testing.T) {
-	gen := NewGenerator()
+	gen := NewGenerator(discardLogger)
 	params := testScreamParams()
 
 	reader, err := gen.Generate(params)
@@ -56,7 +59,7 @@ func TestGenerator_CorrectByteCount(t *testing.T) {
 }
 
 func TestGenerator_NonSilent(t *testing.T) {
-	gen := NewGenerator()
+	gen := NewGenerator(discardLogger)
 	params := testScreamParams()
 
 	reader, err := gen.Generate(params)
@@ -83,7 +86,7 @@ func TestGenerator_NonSilent(t *testing.T) {
 }
 
 func TestGenerator_Deterministic(t *testing.T) {
-	gen := NewGenerator()
+	gen := NewGenerator(discardLogger)
 	params := testScreamParams()
 
 	reader1, err := gen.Generate(params)
@@ -110,7 +113,7 @@ func TestGenerator_Deterministic(t *testing.T) {
 }
 
 func TestGenerator_DifferentSeeds(t *testing.T) {
-	gen := NewGenerator()
+	gen := NewGenerator(discardLogger)
 
 	params1 := testScreamParams()
 	params1.Seed = 111
@@ -142,7 +145,7 @@ func TestGenerator_DifferentSeeds(t *testing.T) {
 }
 
 func TestGenerator_AllPresets(t *testing.T) {
-	gen := NewGenerator()
+	gen := NewGenerator(discardLogger)
 
 	for _, name := range audio.AllPresets() {
 		t.Run(string(name), func(t *testing.T) {
@@ -178,7 +181,7 @@ func TestGenerator_AllPresets(t *testing.T) {
 }
 
 func TestGenerator_InvalidParams(t *testing.T) {
-	gen := NewGenerator()
+	gen := NewGenerator(discardLogger)
 
 	params := testScreamParams()
 	params.Duration = 0
@@ -190,7 +193,7 @@ func TestGenerator_InvalidParams(t *testing.T) {
 }
 
 func TestGenerator_MonoOutput(t *testing.T) {
-	gen := NewGenerator()
+	gen := NewGenerator(discardLogger)
 
 	params := testScreamParams()
 	params.Channels = 1
@@ -213,7 +216,7 @@ func TestGenerator_MonoOutput(t *testing.T) {
 }
 
 func TestGenerator_S16LERange(t *testing.T) {
-	gen := NewGenerator()
+	gen := NewGenerator(discardLogger)
 	params := testScreamParams()
 
 	reader, err := gen.Generate(params)
@@ -262,13 +265,13 @@ func TestGenerator_S16LERange(t *testing.T) {
 
 // TestGenerator_ImplementsInterface verifies Generator satisfies audio.Generator.
 func TestGenerator_ImplementsInterface(t *testing.T) {
-	var _ audio.Generator = NewGenerator()
+	var _ audio.Generator = NewGenerator(discardLogger)
 }
 
 // --- Benchmarks ---
 
 func BenchmarkGenerator_Classic(b *testing.B) {
-	gen := NewGenerator()
+	gen := NewGenerator(discardLogger)
 	params, _ := audio.GetPreset(audio.PresetClassic)
 
 	b.ResetTimer()

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +14,8 @@ import (
 // ---------------------------------------------------------------------------
 // Mock types
 // ---------------------------------------------------------------------------
+
+var discardLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 // mockVoiceConn implements VoiceConn for testing. It captures all interactions
 // so tests can verify the protocol was followed correctly.
@@ -147,7 +151,7 @@ func makeFrames(n int) <-chan []byte {
 func setupPlayer() (*Player, *mockSession, *mockVoiceConn) {
 	vc := newMockVoiceConn()
 	sess := &mockSession{voiceConn: vc}
-	player := NewPlayer(sess)
+	player := NewPlayer(sess, discardLogger)
 	return player, sess, vc
 }
 
@@ -163,7 +167,7 @@ var _ VoicePlayer = (*Player)(nil)
 
 func TestNewPlayer_NotNil(t *testing.T) {
 	sess := &mockSession{}
-	player := NewPlayer(sess)
+	player := NewPlayer(sess, discardLogger)
 	if player == nil {
 		t.Fatal("NewPlayer() returned nil")
 	}
@@ -408,7 +412,7 @@ func TestPlayer_Play_DisconnectOnError(t *testing.T) {
 	vc := newMockVoiceConn()
 	vc.speakingErr = errors.New("mock speaking error")
 	sess := &mockSession{voiceConn: vc}
-	player := NewPlayer(sess)
+	player := NewPlayer(sess, discardLogger)
 
 	frames := makeFrames(1)
 	err := player.Play(context.Background(), "g1", "c1", frames)
@@ -494,7 +498,7 @@ func TestPlayer_Play_NilFrames(t *testing.T) {
 
 func TestPlayer_Play_JoinFails(t *testing.T) {
 	sess := &mockSession{joinErr: errors.New("underlying join failure")}
-	player := NewPlayer(sess)
+	player := NewPlayer(sess, discardLogger)
 	frames := makeFrames(1)
 
 	err := player.Play(context.Background(), "g1", "c1", frames)
@@ -507,7 +511,7 @@ func TestPlayer_Play_SpeakingTrueFails(t *testing.T) {
 	vc := newMockVoiceConn()
 	vc.speakingErr = errors.New("speaking failure")
 	sess := &mockSession{voiceConn: vc}
-	player := NewPlayer(sess)
+	player := NewPlayer(sess, discardLogger)
 	frames := makeFrames(1)
 
 	err := player.Play(context.Background(), "g1", "c1", frames)
@@ -536,7 +540,7 @@ func TestPlayer_Play_CancelledContext(t *testing.T) {
 func TestPlayer_Play_CancelMidPlayback(t *testing.T) {
 	vc := newMockVoiceConn()
 	sess := &mockSession{voiceConn: vc}
-	player := NewPlayer(sess)
+	player := NewPlayer(sess, discardLogger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -625,7 +629,7 @@ func BenchmarkPlayer_Play_150Frames(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		vc := newMockVoiceConn()
 		sess := &mockSession{voiceConn: vc}
-		player := NewPlayer(sess)
+		player := NewPlayer(sess, discardLogger)
 
 		ch := make(chan []byte, 150)
 		for j := 0; j < 150; j++ {
