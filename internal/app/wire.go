@@ -1,37 +1,35 @@
 // Package app provides shared wiring helpers used by the go-scream binaries.
-// It centralises generator selection, encoder creation, and Discord session
-// construction so that cmd/scream and cmd/skill do not duplicate that logic.
+// It centralises generator selection, encoder creation, Discord session
+// construction, logger setup, and signal context creation so that cmd/scream
+// and cmd/skill do not duplicate that logic.
 package app
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/bwmarrin/discordgo"
 
 	"github.com/JamesPrial/go-scream/internal/audio"
 	"github.com/JamesPrial/go-scream/internal/audio/ffmpeg"
 	"github.com/JamesPrial/go-scream/internal/audio/native"
+	"github.com/JamesPrial/go-scream/internal/config"
 	"github.com/JamesPrial/go-scream/internal/discord"
 	"github.com/JamesPrial/go-scream/internal/encoding"
 )
 
-// backendFFmpeg is the string value that selects the ffmpeg audio generator.
-// It matches config.BackendFFmpeg without importing the config package here.
-const backendFFmpeg = "ffmpeg"
-
-// formatWAV is the string value that selects WAV output.
-// It matches config.FormatWAV without importing the config package here.
-const formatWAV = "wav"
-
 // NewGenerator selects and returns an audio.Generator based on the backend
-// string. When backend is "ffmpeg", it locates the ffmpeg binary on PATH and
-// returns an ffmpeg-backed generator. Any other value returns the native Go
-// generator. Returns an error only when the ffmpeg backend is requested but
-// the ffmpeg binary cannot be found.
-func NewGenerator(backend string, logger *slog.Logger) (audio.Generator, error) {
-	if backend == backendFFmpeg {
+// type. When backend is config.BackendFFmpeg, it locates the ffmpeg binary on
+// PATH and returns an ffmpeg-backed generator. Any other value returns the
+// native Go generator. Returns an error only when the ffmpeg backend is
+// requested but the ffmpeg binary cannot be found.
+func NewGenerator(backend config.BackendType, logger *slog.Logger) (audio.Generator, error) {
+	if backend == config.BackendFFmpeg {
 		g, err := ffmpeg.NewGenerator(logger)
 		if err != nil {
 			return nil, err
@@ -41,11 +39,11 @@ func NewGenerator(backend string, logger *slog.Logger) (audio.Generator, error) 
 	return native.NewGenerator(logger), nil
 }
 
-// NewFileEncoder returns a FileEncoder for the given format string. When
-// format is "wav", a WAVEncoder is returned. Any other value returns an
+// NewFileEncoder returns a FileEncoder for the given format type. When format
+// is config.FormatWAV, a WAVEncoder is returned. Any other value returns an
 // OGGEncoder. NewFileEncoder never returns nil.
-func NewFileEncoder(format string, logger *slog.Logger) encoding.FileEncoder {
-	if format == formatWAV {
+func NewFileEncoder(format config.FormatType, logger *slog.Logger) encoding.FileEncoder {
+	if format == config.FormatWAV {
 		return encoding.NewWAVEncoder(logger)
 	}
 	return encoding.NewOGGEncoder(logger)
@@ -66,4 +64,23 @@ func NewDiscordDeps(token string, logger *slog.Logger) (discord.VoicePlayer, io.
 	sess := &discord.GoSession{S: session}
 	player := discord.NewPlayer(sess, logger)
 	return player, session, nil
+}
+
+// SetupLogger creates a *slog.Logger whose level is resolved from cfg via
+// config.ParseLogLevel, writing to stderr with a text handler. It also sets
+// the returned logger as the default slog logger.
+func SetupLogger(cfg config.Config) *slog.Logger {
+	level := config.ParseLogLevel(cfg)
+	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+	return logger
+}
+
+// SignalContext returns a context that is cancelled when SIGINT or SIGTERM is
+// received, together with a stop function that releases the signal resources.
+// Callers must invoke the returned cancel function (e.g. via defer) to avoid
+// leaking resources.
+func SignalContext() (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 }

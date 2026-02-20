@@ -4,14 +4,11 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 
 	"github.com/JamesPrial/go-scream/internal/app"
 	"github.com/JamesPrial/go-scream/internal/config"
@@ -95,28 +92,24 @@ func main() {
 	cfg.Token = token
 	cfg.GuildID = guildID
 
-	level := config.ParseLogLevel(cfg)
-	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
-	logger := slog.New(handler)
-	slog.SetDefault(logger)
+	logger := app.SetupLogger(cfg)
 
 	if err := config.Validate(cfg); err != nil {
 		slog.Error("invalid configuration", "error", err)
 		os.Exit(1)
 	}
 
-	// Create a context that is cancelled on SIGINT or SIGTERM.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := app.SignalContext()
 	defer stop()
 
-	gen, err := app.NewGenerator(string(cfg.Backend), logger)
+	gen, err := app.NewGenerator(cfg.Backend, logger)
 	if err != nil {
 		slog.Error("failed to create generator", "error", err)
 		os.Exit(1)
 	}
 
 	frameEnc := encoding.NewGopusFrameEncoder(logger)
-	fileEnc := app.NewFileEncoder(string(cfg.Format), logger)
+	fileEnc := app.NewFileEncoder(cfg.Format, logger)
 
 	player, sessionCloser, err := app.NewDiscordDeps(cfg.Token, logger)
 	if err != nil {

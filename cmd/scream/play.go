@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/JamesPrial/go-scream/internal/app"
 	"github.com/JamesPrial/go-scream/internal/config"
 	"github.com/JamesPrial/go-scream/internal/scream"
 )
@@ -44,7 +45,7 @@ func runPlay(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	logger := setupLogger(cfg)
+	logger := app.SetupLogger(cfg)
 	logger.Info("playing scream", "guild", cfg.GuildID, "channel", channelID)
 
 	return runWithService(cfg, logger, func(ctx context.Context, svc *scream.Service) error {

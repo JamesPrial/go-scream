@@ -27,7 +27,7 @@ func skipIfNoFFmpeg(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestNewGenerator_NativeBackend(t *testing.T) {
-	gen, err := NewGenerator(string(config.BackendNative), discardLogger)
+	gen, err := NewGenerator(config.BackendNative, discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator(%q) error = %v, want nil", config.BackendNative, err)
 	}
@@ -39,7 +39,7 @@ func TestNewGenerator_NativeBackend(t *testing.T) {
 func TestNewGenerator_FFmpegBackend_Available(t *testing.T) {
 	skipIfNoFFmpeg(t)
 
-	gen, err := NewGenerator(string(config.BackendFFmpeg), discardLogger)
+	gen, err := NewGenerator(config.BackendFFmpeg, discardLogger)
 	if err != nil {
 		t.Fatalf("NewGenerator(%q) error = %v, want nil", config.BackendFFmpeg, err)
 	}
@@ -62,13 +62,13 @@ func TestNewGenerator_UnknownBackend_FallsBackToNative(t *testing.T) {
 	// generator." Unknown backends do NOT produce an error.
 	tests := []struct {
 		name    string
-		backend string
+		backend config.BackendType
 	}{
-		{"empty string", ""},
-		{"unknown string", "unknown"},
-		{"typo", "nativ"},
-		{"uppercase NATIVE", "NATIVE"},
-		{"mixed case Ffmpeg", "Ffmpeg"},
+		{"empty string", config.BackendType("")},
+		{"unknown string", config.BackendType("unknown")},
+		{"typo", config.BackendType("nativ")},
+		{"uppercase NATIVE", config.BackendType("NATIVE")},
+		{"mixed case Ffmpeg", config.BackendType("Ffmpeg")},
 	}
 
 	for _, tt := range tests {
@@ -89,7 +89,7 @@ func TestNewGenerator_UnknownBackend_FallsBackToNative(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestNewFileEncoder_OGG(t *testing.T) {
-	enc := NewFileEncoder(string(config.FormatOGG), discardLogger)
+	enc := NewFileEncoder(config.FormatOGG, discardLogger)
 	if enc == nil {
 		t.Fatal("NewFileEncoder(\"ogg\") returned nil")
 	}
@@ -99,7 +99,7 @@ func TestNewFileEncoder_OGG(t *testing.T) {
 }
 
 func TestNewFileEncoder_WAV(t *testing.T) {
-	enc := NewFileEncoder(string(config.FormatWAV), discardLogger)
+	enc := NewFileEncoder(config.FormatWAV, discardLogger)
 	if enc == nil {
 		t.Fatal("NewFileEncoder(\"wav\") returned nil")
 	}
@@ -112,12 +112,12 @@ func TestNewFileEncoder_DefaultsToOGG(t *testing.T) {
 	// Per doc: "Any other value returns an OGGEncoder."
 	tests := []struct {
 		name   string
-		format string
+		format config.FormatType
 	}{
-		{"empty string", ""},
-		{"unknown format", "mp3"},
-		{"uppercase WAV", "WAV"},
-		{"uppercase OGG", "OGG"},
+		{"empty string", config.FormatType("")},
+		{"unknown format", config.FormatType("mp3")},
+		{"uppercase WAV", config.FormatType("WAV")},
+		{"uppercase OGG", config.FormatType("OGG")},
 	}
 
 	for _, tt := range tests {
@@ -134,7 +134,7 @@ func TestNewFileEncoder_DefaultsToOGG(t *testing.T) {
 }
 
 func TestNewFileEncoder_NeverReturnsNil(t *testing.T) {
-	formats := []string{"ogg", "wav", "", "flac", "mp3", "aac"}
+	formats := []config.FormatType{"ogg", "wav", "", "flac", "mp3", "aac"}
 	for _, f := range formats {
 		enc := NewFileEncoder(f, discardLogger)
 		if enc == nil {
@@ -147,8 +147,8 @@ func TestNewFileEncoder_ImplementsFileEncoder(t *testing.T) {
 	// Verify that NewFileEncoder returns a value assignable to FileEncoder.
 	// The return type of NewFileEncoder is encoding.FileEncoder, so any
 	// assignment is already guaranteed at compile time by the signature.
-	_ = NewFileEncoder(string(config.FormatOGG), discardLogger)
-	_ = NewFileEncoder(string(config.FormatWAV), discardLogger)
+	_ = NewFileEncoder(config.FormatOGG, discardLogger)
+	_ = NewFileEncoder(config.FormatWAV, discardLogger)
 }
 
 // ---------------------------------------------------------------------------
@@ -167,33 +167,33 @@ func TestNewDiscordDeps_RequiresNetwork(t *testing.T) {
 func TestNewGenerator_TableDriven(t *testing.T) {
 	tests := []struct {
 		name      string
-		backend   string
+		backend   config.BackendType
 		wantNil   bool
 		wantErr   bool
 		skipNoFFm bool // skip if ffmpeg not on PATH
 	}{
 		{
 			name:    "native backend returns generator",
-			backend: string(config.BackendNative),
+			backend: config.BackendNative,
 			wantNil: false,
 			wantErr: false,
 		},
 		{
 			name:      "ffmpeg backend returns generator when available",
-			backend:   string(config.BackendFFmpeg),
+			backend:   config.BackendFFmpeg,
 			wantNil:   false,
 			wantErr:   false,
 			skipNoFFm: true,
 		},
 		{
 			name:    "empty string falls back to native",
-			backend: "",
+			backend: config.BackendType(""),
 			wantNil: false,
 			wantErr: false,
 		},
 		{
 			name:    "arbitrary string falls back to native",
-			backend: "pulse-audio",
+			backend: config.BackendType("pulse-audio"),
 			wantNil: false,
 			wantErr: false,
 		},
@@ -230,32 +230,32 @@ func TestNewGenerator_TableDriven(t *testing.T) {
 func TestNewFileEncoder_TableDriven(t *testing.T) {
 	tests := []struct {
 		name     string
-		format   string
+		format   config.FormatType
 		wantType string // "OGG" or "WAV"
 	}{
 		{
 			name:     "ogg format returns OGGEncoder",
-			format:   string(config.FormatOGG),
+			format:   config.FormatOGG,
 			wantType: "OGG",
 		},
 		{
 			name:     "wav format returns WAVEncoder",
-			format:   string(config.FormatWAV),
+			format:   config.FormatWAV,
 			wantType: "WAV",
 		},
 		{
 			name:     "empty string defaults to OGG",
-			format:   "",
+			format:   config.FormatType(""),
 			wantType: "OGG",
 		},
 		{
 			name:     "unknown format defaults to OGG",
-			format:   "flac",
+			format:   config.FormatType("flac"),
 			wantType: "OGG",
 		},
 		{
 			name:     "case sensitive wav only",
-			format:   "WAV",
+			format:   config.FormatType("WAV"),
 			wantType: "OGG", // uppercase does not match
 		},
 	}
@@ -284,15 +284,70 @@ func TestNewFileEncoder_TableDriven(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Consistency check: package-level constants match config constants
+// SetupLogger
 // ---------------------------------------------------------------------------
 
-func TestConstants_MatchConfig(t *testing.T) {
-	// The app package defines local constants that must match config values.
-	if backendFFmpeg != string(config.BackendFFmpeg) {
-		t.Errorf("app.backendFFmpeg = %q, want %q (config.BackendFFmpeg)", backendFFmpeg, config.BackendFFmpeg)
+func TestSetupLogger(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  config.Config
+	}{
+		{
+			name: "default config returns non-nil logger",
+			cfg:  config.Default(),
+		},
+		{
+			name: "verbose config returns non-nil logger",
+			cfg:  config.Config{Verbose: true},
+		},
+		{
+			name: "explicit log level returns non-nil logger",
+			cfg:  config.Config{LogLevel: "debug"},
+		},
+		{
+			name: "zero-value config returns non-nil logger",
+			cfg:  config.Config{},
+		},
 	}
-	if formatWAV != string(config.FormatWAV) {
-		t.Errorf("app.formatWAV = %q, want %q (config.FormatWAV)", formatWAV, config.FormatWAV)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := SetupLogger(tt.cfg)
+			if logger == nil {
+				t.Fatal("SetupLogger() returned nil, want non-nil *slog.Logger")
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SignalContext
+// ---------------------------------------------------------------------------
+
+func TestSignalContext(t *testing.T) {
+	ctx, cancel := SignalContext()
+	if ctx == nil {
+		t.Fatal("SignalContext() returned nil context")
+	}
+	if cancel == nil {
+		t.Fatal("SignalContext() returned nil cancel func")
+	}
+
+	// Verify context is not already done before cancel.
+	select {
+	case <-ctx.Done():
+		t.Fatal("SignalContext() context should not be done before cancel is called")
+	default:
+		// expected: context is still active
+	}
+
+	// Calling cancel should cause the context to be done.
+	cancel()
+
+	select {
+	case <-ctx.Done():
+		// expected: context is cancelled
+	default:
+		t.Fatal("SignalContext() context should be done after cancel is called")
 	}
 }
