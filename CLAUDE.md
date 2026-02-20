@@ -17,9 +17,15 @@ go vet ./...                            # Static analysis
 staticcheck ./...                       # Extended linting (if installed)
 ```
 
-**CGO required:** `layeh.com/gopus` links against libopus. Ensure libopus-dev (or equivalent) is installed.
+**CGO required:** `layeh.com/gopus` links against libopus. Install it first:
+```bash
+brew install opus          # macOS
+sudo apt-get install libopus-dev  # Ubuntu/Debian
+```
 
 **FFmpeg tests:** ~18 tests are skipped when `ffmpeg` is not on `$PATH`. The native backend requires no external tools.
+
+**Docker:** Multi-arch images (amd64 + arm64) are built by CI (`.github/workflows/docker-publish.yml`) and published to `ghcr.io/jamesprial/go-scream`.
 
 ## Architecture
 
@@ -43,7 +49,7 @@ cmd/skill  (OpenClaw)   ─┤
 
 **Dependency injection:** All components wired via constructor injection in `internal/app/wire.go`. `scream.NewServiceWithDeps` accepts interfaces, making the service fully testable with mocks.
 
-**Config cascade:** Defaults → YAML file → env vars (`SCREAM_*`, `DISCORD_TOKEN`) → CLI flags.
+**Config cascade:** Defaults → YAML file → env vars (`SCREAM_*`, `DISCORD_TOKEN`) → CLI flags. Note: `internal/config` has a custom `UnmarshalYAML` that parses Go duration strings (e.g., `"5s"`, `"500ms"`) manually.
 
 ## Key Conventions
 
@@ -52,10 +58,10 @@ cmd/skill  (OpenClaw)   ─┤
 - **Compile-time interface checks:** `var _ audio.Generator = (*Generator)(nil)` in each implementation file.
 - **Sentinel errors per package** (e.g., `config.ErrInvalidBackend`, `discord.ErrNoVoiceChannel`), wrapped with `%w`.
 - **Context propagation throughout.** All long-running operations accept `context.Context` and honor cancellation.
-- **Table-driven tests** with standard `testing` package (no test frameworks).
+- **Table-driven tests** with standard `testing` package (no test frameworks). Mocks are hand-rolled locally in test files with `sync.Mutex`-protected call tracking — no mock libraries.
 
 ## Package Notes
 
-- `internal/config` must **not** import `internal/audio` (decoupled; preset names are maintained as a local list with a sync comment).
+- `internal/config` must **not** import `internal/audio` (decoupled). When adding a preset to `audio/presets.go`, you must also add it to the `knownPresets` slice in `config/validate.go`.
 - `internal/app` is imported only by `cmd/` binaries — never by other `internal/` packages.
 - Native audio layers use coprime constants from `audio.Coprime*` shared between native and ffmpeg backends.
