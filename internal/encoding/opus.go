@@ -39,6 +39,32 @@ func NewGopusFrameEncoderWithBitrate(bitrate int, logger *slog.Logger) *GopusFra
 	return &GopusFrameEncoder{bitrate: bitrate, logger: logger}
 }
 
+// sendValidationError closes frameCh, sends err on errCh, and closes errCh in a
+// new goroutine. It is used to report validation failures before the main encode
+// goroutine starts.
+func sendValidationError(frameCh chan []byte, errCh chan error, err error) {
+	go func() {
+		close(frameCh)
+		errCh <- err
+		close(errCh)
+	}()
+}
+
+// encodeFrame converts pcmBuf to int16 samples, encodes them with encoder, and
+// sends the resulting Opus packet on frameCh. It returns the encode error, or
+// nil on success. The caller is responsible for sending the error on errCh.
+func encodeFrame(encoder *gopus.Encoder, pcmBuf []byte, samples []int16, frameCh chan<- []byte) error {
+	for i := range samples {
+		samples[i] = int16(binary.LittleEndian.Uint16(pcmBuf[i*2:]))
+	}
+	encoded, err := encoder.Encode(samples, OpusFrameSamples, MaxOpusFrameBytes)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrOpusEncode, err)
+	}
+	frameCh <- encoded
+	return nil
+}
+
 // EncodeFrames reads s16le PCM data from src and encodes it as Opus frames.
 // Each frame is sent on the returned frame channel. Any error (or nil on clean
 // completion) is sent on the error channel. Both channels are closed when done.
@@ -50,19 +76,11 @@ func (e *GopusFrameEncoder) EncodeFrames(src io.Reader, sampleRate, channels int
 	errCh := make(chan error, 1)
 
 	if !validOpusSampleRates[sampleRate] {
-		go func() {
-			close(frameCh)
-			errCh <- fmt.Errorf("%w: got %d, must be one of 8000,12000,16000,24000,48000", ErrInvalidSampleRate, sampleRate)
-			close(errCh)
-		}()
+		sendValidationError(frameCh, errCh, fmt.Errorf("%w: got %d, must be one of 8000,12000,16000,24000,48000", ErrInvalidSampleRate, sampleRate))
 		return frameCh, errCh
 	}
 	if channels != 1 && channels != 2 {
-		go func() {
-			close(frameCh)
-			errCh <- fmt.Errorf("%w: got %d", ErrInvalidChannels, channels)
-			close(errCh)
-		}()
+		sendValidationError(frameCh, errCh, fmt.Errorf("%w: got %d", ErrInvalidChannels, channels))
 		return frameCh, errCh
 	}
 
@@ -103,15 +121,10 @@ func (e *GopusFrameEncoder) EncodeFrames(src io.Reader, sampleRate, channels int
 			if readErr == io.ErrUnexpectedEOF {
 				// Partial frame: data was read into pcmBuf[0:n]; the rest was
 				// already zeroed above. Encode and then stop.
-				for i := range samples {
-					samples[i] = int16(binary.LittleEndian.Uint16(pcmBuf[i*2:]))
-				}
-				encoded, encErr := encoder.Encode(samples, OpusFrameSamples, MaxOpusFrameBytes)
-				if encErr != nil {
-					errCh <- fmt.Errorf("%w: %w", ErrOpusEncode, encErr)
+				if encErr := encodeFrame(encoder, pcmBuf, samples, frameCh); encErr != nil {
+					errCh <- encErr
 					return
 				}
-				frameCh <- encoded
 				frameCount++
 				break
 			}
@@ -121,15 +134,10 @@ func (e *GopusFrameEncoder) EncodeFrames(src io.Reader, sampleRate, channels int
 			}
 
 			// Full frame read successfully.
-			for i := range samples {
-				samples[i] = int16(binary.LittleEndian.Uint16(pcmBuf[i*2:]))
-			}
-			encoded, encErr := encoder.Encode(samples, OpusFrameSamples, MaxOpusFrameBytes)
-			if encErr != nil {
-				errCh <- fmt.Errorf("%w: %w", ErrOpusEncode, encErr)
+			if encErr := encodeFrame(encoder, pcmBuf, samples, frameCh); encErr != nil {
+				errCh <- encErr
 				return
 			}
-			frameCh <- encoded
 			frameCount++
 		}
 

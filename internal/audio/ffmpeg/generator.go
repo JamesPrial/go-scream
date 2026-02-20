@@ -42,7 +42,7 @@ func (g *Generator) Generate(params audio.ScreamParams) (io.Reader, error) {
 		return nil, fmt.Errorf("invalid params: %w", err)
 	}
 
-	args := BuildArgs(params)
+	args := buildArgs(params)
 	cmd := exec.Command(g.ffmpegPath, args...)
 
 	var stdout, stderr bytes.Buffer

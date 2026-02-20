@@ -36,16 +36,16 @@ func classicParams() audio.ScreamParams {
 // --- BuildArgs tests ---
 
 func Test_BuildArgs_ContainsLavfiInput(t *testing.T) {
-	args := BuildArgs(classicParams())
+	args := buildArgs(classicParams())
 	joined := strings.Join(args, " ")
 
 	if !strings.Contains(joined, "-f lavfi") {
-		t.Errorf("BuildArgs() should contain '-f lavfi', got args: %v", args)
+		t.Errorf("buildArgs() should contain '-f lavfi', got args: %v", args)
 	}
 }
 
 func Test_BuildArgs_ContainsAevalsrc(t *testing.T) {
-	args := BuildArgs(classicParams())
+	args := buildArgs(classicParams())
 
 	found := false
 	for _, arg := range args {
@@ -55,12 +55,12 @@ func Test_BuildArgs_ContainsAevalsrc(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Errorf("BuildArgs() should contain an arg with 'aevalsrc=', got: %v", args)
+		t.Errorf("buildArgs() should contain an arg with 'aevalsrc=', got: %v", args)
 	}
 }
 
 func Test_BuildArgs_ContainsAudioFilter(t *testing.T) {
-	args := BuildArgs(classicParams())
+	args := buildArgs(classicParams())
 
 	afIndex := -1
 	for i, arg := range args {
@@ -70,19 +70,19 @@ func Test_BuildArgs_ContainsAudioFilter(t *testing.T) {
 		}
 	}
 	if afIndex == -1 {
-		t.Fatalf("BuildArgs() should contain '-af', got: %v", args)
+		t.Fatalf("buildArgs() should contain '-af', got: %v", args)
 	}
 	if afIndex >= len(args)-1 {
-		t.Fatalf("BuildArgs() has '-af' as last arg with no filter value")
+		t.Fatalf("buildArgs() has '-af' as last arg with no filter value")
 	}
 	filterVal := args[afIndex+1]
 	if filterVal == "" {
-		t.Error("BuildArgs() '-af' value should not be empty")
+		t.Error("buildArgs() '-af' value should not be empty")
 	}
 }
 
 func Test_BuildArgs_ContainsOutputFormat(t *testing.T) {
-	args := BuildArgs(classicParams())
+	args := buildArgs(classicParams())
 	joined := strings.Join(args, " ")
 
 	checks := []string{
@@ -91,48 +91,48 @@ func Test_BuildArgs_ContainsOutputFormat(t *testing.T) {
 	}
 	for _, check := range checks {
 		if !strings.Contains(joined, check) {
-			t.Errorf("BuildArgs() should contain '%s', got: %s", check, joined)
+			t.Errorf("buildArgs() should contain '%s', got: %s", check, joined)
 		}
 	}
 }
 
 func Test_BuildArgs_ContainsChannels(t *testing.T) {
 	params := classicParams()
-	args := BuildArgs(params)
+	args := buildArgs(params)
 	joined := strings.Join(args, " ")
 
 	expected := fmt.Sprintf("-ac %d", params.Channels)
 	if !strings.Contains(joined, expected) {
-		t.Errorf("BuildArgs() should contain '%s', got: %s", expected, joined)
+		t.Errorf("buildArgs() should contain '%s', got: %s", expected, joined)
 	}
 }
 
 func Test_BuildArgs_ContainsSampleRate(t *testing.T) {
 	params := classicParams()
-	args := BuildArgs(params)
+	args := buildArgs(params)
 	joined := strings.Join(args, " ")
 
 	expected := fmt.Sprintf("-ar %d", params.SampleRate)
 	if !strings.Contains(joined, expected) {
-		t.Errorf("BuildArgs() should contain '%s', got: %s", expected, joined)
+		t.Errorf("buildArgs() should contain '%s', got: %s", expected, joined)
 	}
 }
 
 func Test_BuildArgs_LastArgIsPipe(t *testing.T) {
-	args := BuildArgs(classicParams())
+	args := buildArgs(classicParams())
 
 	if len(args) == 0 {
-		t.Fatal("BuildArgs() returned empty args")
+		t.Fatal("buildArgs() returned empty args")
 	}
 	lastArg := args[len(args)-1]
 	if lastArg != "pipe:1" {
-		t.Errorf("BuildArgs() last arg = %q, want %q", lastArg, "pipe:1")
+		t.Errorf("buildArgs() last arg = %q, want %q", lastArg, "pipe:1")
 	}
 }
 
 func Test_BuildArgs_ContainsDuration(t *testing.T) {
 	params := classicParams()
-	args := BuildArgs(params)
+	args := buildArgs(params)
 
 	// Duration should appear somewhere in the aevalsrc arg (as d= or duration=)
 	// or as a separate -t argument.
@@ -162,29 +162,29 @@ func Test_BuildArgs_ContainsDuration(t *testing.T) {
 		}
 	}
 	if !hasDuration {
-		t.Errorf("BuildArgs() should contain duration (%v) in aevalsrc or as -t flag, got: %s", params.Duration, joined)
+		t.Errorf("buildArgs() should contain duration (%v) in aevalsrc or as -t flag, got: %s", params.Duration, joined)
 	}
 }
 
 func Test_BuildArgs_MonoParams(t *testing.T) {
 	params := classicParams()
 	params.Channels = 1
-	args := BuildArgs(params)
+	args := buildArgs(params)
 	joined := strings.Join(args, " ")
 
 	if !strings.Contains(joined, "-ac 1") {
-		t.Errorf("BuildArgs() with mono should contain '-ac 1', got: %s", joined)
+		t.Errorf("buildArgs() with mono should contain '-ac 1', got: %s", joined)
 	}
 }
 
 func Test_BuildArgs_DifferentSampleRate(t *testing.T) {
 	params := classicParams()
 	params.SampleRate = 44100
-	args := BuildArgs(params)
+	args := buildArgs(params)
 	joined := strings.Join(args, " ")
 
 	if !strings.Contains(joined, "-ar 44100") {
-		t.Errorf("BuildArgs() with 44100 should contain '-ar 44100', got: %s", joined)
+		t.Errorf("buildArgs() with 44100 should contain '-ar 44100', got: %s", joined)
 	}
 }
 
@@ -692,9 +692,9 @@ func Test_BuildArgs_AllPresets(t *testing.T) {
 			if !ok {
 				t.Fatalf("GetPreset(%q) returned false", name)
 			}
-			args := BuildArgs(params)
+			args := buildArgs(params)
 			if len(args) == 0 {
-				t.Errorf("BuildArgs() for preset %q returned empty args", name)
+				t.Errorf("buildArgs() for preset %q returned empty args", name)
 			}
 
 			joined := strings.Join(args, " ")
@@ -708,7 +708,7 @@ func Test_BuildArgs_AllPresets(t *testing.T) {
 			}
 			for _, frag := range requiredFragments {
 				if !strings.Contains(joined, frag) {
-					t.Errorf("BuildArgs() for preset %q missing '%s' in: %s", name, frag, joined)
+					t.Errorf("buildArgs() for preset %q missing '%s' in: %s", name, frag, joined)
 				}
 			}
 		})
@@ -720,12 +720,12 @@ func Test_BuildArgs_WithRandomizedParams(t *testing.T) {
 	for _, seed := range seeds {
 		t.Run(fmt.Sprintf("seed_%d", seed), func(t *testing.T) {
 			params := audio.Randomize(seed)
-			args := BuildArgs(params)
+			args := buildArgs(params)
 			if len(args) == 0 {
-				t.Errorf("BuildArgs() for Randomize(%d) returned empty args", seed)
+				t.Errorf("buildArgs() for Randomize(%d) returned empty args", seed)
 			}
 			if args[len(args)-1] != "pipe:1" {
-				t.Errorf("BuildArgs() last arg = %q, want 'pipe:1'", args[len(args)-1])
+				t.Errorf("buildArgs() last arg = %q, want 'pipe:1'", args[len(args)-1])
 			}
 		})
 	}
@@ -737,7 +737,7 @@ func BenchmarkBuildArgs(b *testing.B) {
 	params := classicParams()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		BuildArgs(params)
+		buildArgs(params)
 	}
 }
 

@@ -45,6 +45,26 @@ func NewServiceWithDeps(
 	}
 }
 
+// generatePCM resolves audio parameters from the service config and calls the
+// generator to produce raw PCM. It is the shared preamble for Play and Generate.
+func (s *Service) generatePCM() (io.Reader, audio.ScreamParams, error) {
+	s.logger.Debug("resolving audio params", "preset", s.cfg.Preset, "duration", s.cfg.Duration, "volume", s.cfg.Volume)
+
+	params, err := resolveParams(s.cfg)
+	if err != nil {
+		return nil, audio.ScreamParams{}, err
+	}
+
+	s.logger.Debug("generating audio")
+
+	pcm, err := s.generator.Generate(params)
+	if err != nil {
+		return nil, audio.ScreamParams{}, fmt.Errorf("%w: %w", ErrGenerateFailed, err)
+	}
+
+	return pcm, params, nil
+}
+
 // Play generates a scream and streams it to the specified Discord voice channel.
 // It validates guildID, checks for a configured player (unless DryRun is set),
 // and checks for a pre-cancelled context before proceeding.
@@ -61,18 +81,9 @@ func (s *Service) Play(ctx context.Context, guildID, channelID string) error {
 		return err
 	}
 
-	s.logger.Debug("resolving audio params", "preset", s.cfg.Preset, "duration", s.cfg.Duration, "volume", s.cfg.Volume)
-
-	params, err := resolveParams(s.cfg)
+	pcm, params, err := s.generatePCM()
 	if err != nil {
 		return err
-	}
-
-	s.logger.Debug("generating audio")
-
-	pcm, err := s.generator.Generate(params)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrGenerateFailed, err)
 	}
 
 	s.logger.Debug("encoding frames")
@@ -112,18 +123,9 @@ func (s *Service) Generate(ctx context.Context, dst io.Writer) error {
 		return err
 	}
 
-	s.logger.Debug("resolving audio params", "preset", s.cfg.Preset, "duration", s.cfg.Duration, "volume", s.cfg.Volume)
-
-	params, err := resolveParams(s.cfg)
+	pcm, params, err := s.generatePCM()
 	if err != nil {
 		return err
-	}
-
-	s.logger.Debug("generating audio")
-
-	pcm, err := s.generator.Generate(params)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrGenerateFailed, err)
 	}
 
 	s.logger.Debug("encoding to file")

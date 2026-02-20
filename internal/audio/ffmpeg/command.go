@@ -9,9 +9,9 @@ import (
 	"github.com/JamesPrial/go-scream/internal/audio"
 )
 
-// BuildArgs builds the complete FFmpeg CLI argument list from ScreamParams.
+// buildArgs builds the complete FFmpeg CLI argument list from ScreamParams.
 // The output is raw s16le PCM written to stdout (pipe:1).
-func BuildArgs(params audio.ScreamParams) []string {
+func buildArgs(params audio.ScreamParams) []string {
 	sampleRate := strconv.Itoa(params.SampleRate)
 	channels := strconv.Itoa(params.Channels)
 	durationSec := params.Duration.Seconds()
