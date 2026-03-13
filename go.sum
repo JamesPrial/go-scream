@@ -1,5 +1,5 @@
-github.com/JamesPrial/discordgo v0.0.0-20260313200138-53a57d450e05 h1:caZkBBTpVJ3acEGoChWmgSYWh6OF9STVPFbPqai6oa4=
-github.com/JamesPrial/discordgo v0.0.0-20260313200138-53a57d450e05/go.mod h1:A0FcMFJKJ9fRjgSuZ2o+pIQ6mPS81SVuiLN2vYTa7Ao=
+github.com/JamesPrial/discordgo v0.0.0-20260313210520-df15493c2eb0 h1:4id+gohu3BgPWk75TL48jkBswzQAlkuKYs7JlwX0d3Q=
+github.com/JamesPrial/discordgo v0.0.0-20260313210520-df15493c2eb0/go.mod h1:A0FcMFJKJ9fRjgSuZ2o+pIQ6mPS81SVuiLN2vYTa7Ao=
 github.com/cloudflare/circl v1.6.3 h1:9GPOhQGF9MCYUeXyMYlqTR6a5gTrgR/fBLXvUgtVcg8=
 github.com/cloudflare/circl v1.6.3/go.mod h1:2eXP6Qfat4O/Yhh8BznvKnJ+uzEoTQ6jVKJRn81BiS4=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
