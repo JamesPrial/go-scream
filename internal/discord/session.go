@@ -1,10 +1,14 @@
 package discord
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"context"
+
+	"github.com/bwmarrin/discordgo"
+)
 
 // Session abstracts the subset of *discordgo.Session methods used by this package.
 type Session interface {
-	ChannelVoiceJoin(guildID, channelID string, mute, deaf bool) (VoiceConn, error)
+	ChannelVoiceJoin(ctx context.Context, guildID, channelID string, mute, deaf bool) (VoiceConn, error)
 	GuildVoiceStates(guildID string) ([]*VoiceState, error)
 }
 
@@ -12,7 +16,7 @@ type Session interface {
 type VoiceConn interface {
 	Speaking(speaking bool) error
 	OpusSendChannel() chan<- []byte
-	Disconnect() error
+	Disconnect(ctx context.Context) error
 }
 
 // VoiceState represents a user's voice connection state in a guild.
@@ -28,8 +32,8 @@ type GoSession struct {
 }
 
 // ChannelVoiceJoin joins the specified voice channel and returns a VoiceConn.
-func (d *GoSession) ChannelVoiceJoin(guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
-	vc, err := d.S.ChannelVoiceJoin(guildID, channelID, mute, deaf)
+func (d *GoSession) ChannelVoiceJoin(ctx context.Context, guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
+	vc, err := d.S.ChannelVoiceJoin(ctx, guildID, channelID, mute, deaf)
 	if err != nil {
 		return nil, err
 	}
@@ -65,4 +69,4 @@ func (d *GoVoiceConn) Speaking(speaking bool) error { return d.VC.Speaking(speak
 func (d *GoVoiceConn) OpusSendChannel() chan<- []byte { return d.VC.OpusSend }
 
 // Disconnect closes the voice connection.
-func (d *GoVoiceConn) Disconnect() error { return d.VC.Disconnect() }
+func (d *GoVoiceConn) Disconnect(ctx context.Context) error { return d.VC.Disconnect(ctx) }

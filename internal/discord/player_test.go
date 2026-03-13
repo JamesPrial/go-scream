@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -63,7 +65,7 @@ func (m *mockVoiceConn) OpusSendChannel() chan<- []byte {
 	return m.opusSend
 }
 
-func (m *mockVoiceConn) Disconnect() error {
+func (m *mockVoiceConn) Disconnect(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.disconnected = true
@@ -106,7 +108,7 @@ type joinCall struct {
 	deaf      bool
 }
 
-func (m *mockSession) ChannelVoiceJoin(guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
+func (m *mockSession) ChannelVoiceJoin(_ context.Context, guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.joinCalls = append(m.joinCalls, joinCall{guildID, channelID, mute, deaf})
@@ -640,4 +642,196 @@ func BenchmarkPlayer_Play_150Frames(b *testing.B) {
 		close(vc.opusSend)
 		<-vc.collectDone
 	}
+}
+
+// ===========================================================================
+// DAVE E2EE error handling tests
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// 1. isEncryptionError helper
+// ---------------------------------------------------------------------------
+
+func TestIsEncryptionError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "error containing 4016",
+			err:  errors.New("voice connection closed: 4016"),
+			want: true,
+		},
+		{
+			name: "error containing 4017",
+			err:  errors.New("voice connection closed: 4017"),
+			want: true,
+		},
+		{
+			name: "error with both codes",
+			err:  errors.New("errors 4016 and 4017 received"),
+			want: true,
+		},
+		{
+			name: "generic voice error",
+			err:  errors.New("connection reset"),
+			want: false,
+		},
+		{
+			name: "nil error",
+			err:  nil,
+			want: false,
+		},
+		{
+			name: "similar but wrong code 4015",
+			err:  errors.New("voice connection closed: 4015"),
+			want: false,
+		},
+		{
+			name: "similar but wrong code 4018",
+			err:  errors.New("voice connection closed: 4018"),
+			want: false,
+		},
+		{
+			name: "wrapped error with 4016",
+			err:  fmt.Errorf("outer: %w", errors.New("voice connection closed: 4016")),
+			want: true,
+		},
+		{
+			name: "wrapped error with 4017",
+			err:  fmt.Errorf("outer: %w", errors.New("voice connection closed: 4017")),
+			want: true,
+		},
+		{
+			name: "4016 embedded in longer message",
+			err:  errors.New("discord websocket error code 4016: failed encryption"),
+			want: true,
+		},
+		{
+			name: "empty error message",
+			err:  errors.New(""),
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isEncryptionError(tt.err)
+			if got != tt.want {
+				t.Errorf("isEncryptionError(%v) = %v, want %v", tt.err, got, tt.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 2. Player.Play encryption error on join
+// ---------------------------------------------------------------------------
+
+func TestPlayer_Play_EncryptionErrorOnJoin(t *testing.T) {
+	tests := []struct {
+		name    string
+		joinErr error
+		wantErr error
+	}{
+		{
+			name:    "join returns 4016 error",
+			joinErr: errors.New("voice connection closed: 4016"),
+			wantErr: ErrEncryptionFailed,
+		},
+		{
+			name:    "join returns 4017 error",
+			joinErr: errors.New("voice connection closed: 4017"),
+			wantErr: ErrEncryptionFailed,
+		},
+		{
+			name:    "join returns non-encryption error",
+			joinErr: errors.New("generic network failure"),
+			wantErr: ErrVoiceJoinFailed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sess := &mockSession{joinErr: tt.joinErr}
+			player := NewPlayer(sess, discardLogger)
+			frames := makeFrames(1)
+
+			err := player.Play(context.Background(), "g1", "c1", frames)
+			if err == nil {
+				t.Fatal("Play() expected error, got nil")
+			}
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Play() error = %v, want %v (via errors.Is)", err, tt.wantErr)
+			}
+
+			// For encryption errors, verify the original error is wrapped
+			// (accessible in the error chain or message).
+			if tt.wantErr == ErrEncryptionFailed {
+				errMsg := err.Error()
+				if !strings.Contains(errMsg, tt.joinErr.Error()) {
+					t.Errorf("wrapped error should contain original message %q, got %q",
+						tt.joinErr.Error(), errMsg)
+				}
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 5. ErrEncryptionFailed sentinel error properties
+// ---------------------------------------------------------------------------
+
+func TestErrEncryptionFailed(t *testing.T) {
+	t.Run("error message contains discord and encryption", func(t *testing.T) {
+		msg := ErrEncryptionFailed.Error()
+		if !strings.Contains(msg, "discord") {
+			t.Errorf("ErrEncryptionFailed message %q does not contain 'discord'", msg)
+		}
+		if !strings.Contains(msg, "encryption") {
+			t.Errorf("ErrEncryptionFailed message %q does not contain 'encryption'", msg)
+		}
+	})
+
+	t.Run("distinct from ErrVoiceJoinFailed", func(t *testing.T) {
+		if errors.Is(ErrEncryptionFailed, ErrVoiceJoinFailed) {
+			t.Error("ErrEncryptionFailed should not match ErrVoiceJoinFailed via errors.Is")
+		}
+		if errors.Is(ErrVoiceJoinFailed, ErrEncryptionFailed) {
+			t.Error("ErrVoiceJoinFailed should not match ErrEncryptionFailed via errors.Is")
+		}
+	})
+
+	t.Run("wrappable with fmt.Errorf", func(t *testing.T) {
+		wrapped := fmt.Errorf("something went wrong: %w", ErrEncryptionFailed)
+		if !errors.Is(wrapped, ErrEncryptionFailed) {
+			t.Errorf("errors.Is(wrapped, ErrEncryptionFailed) = false, want true; wrapped = %v", wrapped)
+		}
+	})
+
+	t.Run("double-wrapped still matches", func(t *testing.T) {
+		inner := fmt.Errorf("inner: %w", ErrEncryptionFailed)
+		outer := fmt.Errorf("outer: %w", inner)
+		if !errors.Is(outer, ErrEncryptionFailed) {
+			t.Errorf("errors.Is(double-wrapped, ErrEncryptionFailed) = false, want true; err = %v", outer)
+		}
+	})
+
+	t.Run("distinct from other discord sentinels", func(t *testing.T) {
+		sentinels := []error{
+			ErrVoiceJoinFailed,
+			ErrSpeakingFailed,
+			ErrNoPopulatedChannel,
+			ErrGuildStateFailed,
+			ErrEmptyGuildID,
+			ErrEmptyChannelID,
+			ErrNilFrameChannel,
+		}
+		for _, s := range sentinels {
+			if errors.Is(ErrEncryptionFailed, s) {
+				t.Errorf("ErrEncryptionFailed should not match %v", s)
+			}
+		}
+	})
 }

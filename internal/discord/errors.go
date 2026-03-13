@@ -12,4 +12,5 @@ var (
 	ErrEmptyGuildID       = errors.New("discord: guild ID must not be empty")
 	ErrEmptyChannelID     = errors.New("discord: channel ID must not be empty")
 	ErrNilFrameChannel    = errors.New("discord: frame channel must not be nil")
+	ErrEncryptionFailed   = errors.New("discord: voice encryption failed")
 )
