@@ -82,28 +82,33 @@ func (p *Player) Play(ctx context.Context, guildID, channelID string, frames <-c
 	p.logger.Debug("voice channel joined, sending frames")
 
 	opusSend := vc.OpusSendChannel()
+	start := time.Now()
+	var frameCount int
 
 	// Frame loop with double-select pattern for graceful context cancellation.
 loop:
 	for {
 		select {
 		case <-ctx.Done():
+			p.logger.Info("playback cancelled", "frames_sent", frameCount, "elapsed", time.Since(start))
 			cancelPlayback(p.logger, vc, opusSend)
 			return ctx.Err()
 		case frame, ok := <-frames:
 			if !ok {
 				break loop
 			}
+			frameCount++
 			select {
 			case opusSend <- frame:
 			case <-ctx.Done():
+				p.logger.Info("playback cancelled", "frames_sent", frameCount, "elapsed", time.Since(start))
 				cancelPlayback(p.logger, vc, opusSend)
 				return ctx.Err()
 			}
 		}
 	}
 
-	p.logger.Debug("playback complete, sending silence")
+	p.logger.Info("playback complete", "frames_sent", frameCount, "elapsed", time.Since(start))
 
 	// Normal completion: send silence and stop speaking.
 	sendSilence(context.Background(), opusSend)

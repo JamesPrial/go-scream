@@ -53,17 +53,56 @@ func NewFileEncoder(format config.FormatType, logger *slog.Logger) encoding.File
 // the WebSocket connection, and returns a ready-to-use VoicePlayer together
 // with an io.Closer that must be called to close the session when done.
 // On any error both returned values are nil.
+//
+// The discordgo session's log level is derived from logger so that internal
+// DAVE E2EE diagnostics are visible when go-scream runs with --log-level debug.
 func NewDiscordDeps(token string, logger *slog.Logger) (discord.VoicePlayer, io.Closer, error) {
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create discord session: %w", err)
 	}
+
+	// Bridge discordgo's logging into slog so DAVE diagnostics appear in
+	// go-scream's structured log output.
+	session.LogLevel = discordLogLevel(logger)
+	discordgo.Logger = func(msgL, caller int, format string, a ...interface{}) {
+		var lvl slog.Level
+		switch msgL {
+		case discordgo.LogError:
+			lvl = slog.LevelError
+		case discordgo.LogWarning:
+			lvl = slog.LevelWarn
+		case discordgo.LogInformational:
+			lvl = slog.LevelInfo
+		default:
+			lvl = slog.LevelDebug
+		}
+		logger.Log(context.Background(), lvl, fmt.Sprintf(format, a...), "source", "discordgo")
+	}
+
 	if err := session.Open(); err != nil {
 		return nil, nil, fmt.Errorf("failed to open discord session: %w", err)
 	}
-	sess := &discord.GoSession{S: session}
+	sess := &discord.GoSession{S: session, Logger: logger}
 	player := discord.NewPlayer(sess, logger)
 	return player, session, nil
+}
+
+// discordLogLevel maps the slog logger's effective level to a discordgo
+// LogLevel constant. It probes from most verbose to least so that the
+// discordgo session emits messages at the matching threshold.
+func discordLogLevel(logger *slog.Logger) int {
+	ctx := context.Background()
+	switch {
+	case logger.Enabled(ctx, slog.LevelDebug):
+		return discordgo.LogDebug
+	case logger.Enabled(ctx, slog.LevelInfo):
+		return discordgo.LogInformational
+	case logger.Enabled(ctx, slog.LevelWarn):
+		return discordgo.LogWarning
+	default:
+		return discordgo.LogError
+	}
 }
 
 // SetupLogger creates a *slog.Logger whose level is resolved from cfg via

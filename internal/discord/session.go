@@ -2,6 +2,8 @@ package discord
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -28,16 +30,21 @@ type VoiceState struct {
 
 // GoSession wraps *discordgo.Session to satisfy the Session interface.
 type GoSession struct {
-	S *discordgo.Session
+	S      *discordgo.Session
+	Logger *slog.Logger
 }
 
 // ChannelVoiceJoin joins the specified voice channel and returns a VoiceConn.
 func (d *GoSession) ChannelVoiceJoin(ctx context.Context, guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
+	d.Logger.Info("joining voice channel", "guild", guildID, "channel", channelID)
+	start := time.Now()
 	vc, err := d.S.ChannelVoiceJoin(ctx, guildID, channelID, mute, deaf)
 	if err != nil {
+		d.Logger.Error("voice join failed", "guild", guildID, "error", err, "elapsed", time.Since(start))
 		return nil, err
 	}
-	return &GoVoiceConn{VC: vc}, nil
+	d.Logger.Info("voice join succeeded", "guild", guildID, "status", int(vc.Status), "elapsed", time.Since(start))
+	return &GoVoiceConn{VC: vc, Logger: d.Logger}, nil
 }
 
 // GuildVoiceStates returns the voice states for all users in the given guild.
@@ -59,14 +66,29 @@ func (d *GoSession) GuildVoiceStates(guildID string) ([]*VoiceState, error) {
 
 // GoVoiceConn wraps *discordgo.VoiceConnection to satisfy the VoiceConn interface.
 type GoVoiceConn struct {
-	VC *discordgo.VoiceConnection
+	VC     *discordgo.VoiceConnection
+	Logger *slog.Logger
 }
 
 // Speaking sets the speaking state on the voice connection.
-func (d *GoVoiceConn) Speaking(speaking bool) error { return d.VC.Speaking(speaking) }
+func (d *GoVoiceConn) Speaking(speaking bool) error {
+	d.Logger.Debug("setting speaking state", "speaking", speaking, "vc_status", int(d.VC.Status))
+	err := d.VC.Speaking(speaking)
+	if err != nil {
+		d.Logger.Error("speaking failed", "speaking", speaking, "error", err)
+	}
+	return err
+}
 
 // OpusSendChannel returns the channel used to send Opus-encoded audio frames.
 func (d *GoVoiceConn) OpusSendChannel() chan<- []byte { return d.VC.OpusSend }
 
 // Disconnect closes the voice connection.
-func (d *GoVoiceConn) Disconnect(ctx context.Context) error { return d.VC.Disconnect(ctx) }
+func (d *GoVoiceConn) Disconnect(ctx context.Context) error {
+	d.Logger.Info("disconnecting from voice", "vc_status", int(d.VC.Status))
+	err := d.VC.Disconnect(ctx)
+	if err != nil {
+		d.Logger.Error("disconnect failed", "error", err)
+	}
+	return err
+}
