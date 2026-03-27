@@ -65,7 +65,7 @@ func (m *mockVoiceConn) OpusSendChannel() chan<- []byte {
 	return m.opusSend
 }
 
-func (m *mockVoiceConn) Disconnect(_ context.Context) error {
+func (m *mockVoiceConn) Disconnect() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.disconnected = true
@@ -108,7 +108,7 @@ type joinCall struct {
 	deaf      bool
 }
 
-func (m *mockSession) ChannelVoiceJoin(_ context.Context, guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
+func (m *mockSession) ChannelVoiceJoin(guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.joinCalls = append(m.joinCalls, joinCall{guildID, channelID, mute, deaf})

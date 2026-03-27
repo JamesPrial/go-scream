@@ -17,10 +17,21 @@ go vet ./...                            # Static analysis
 staticcheck ./...                       # Extended linting (if installed)
 ```
 
-**CGO required:** `layeh.com/gopus` links against libopus. Install it first:
+**CGO required:** Two native libraries need system headers:
+- `layeh.com/gopus` links against libopus
+- `github.com/jamesprial/dave-go-bindings` links against libdave (Discord DAVE E2EE)
+
 ```bash
-brew install opus          # macOS
-sudo apt-get install libopus-dev  # Ubuntu/Debian
+# macOS
+brew install opus cmake openssl@3
+
+# Ubuntu/Debian
+sudo apt-get install libopus-dev g++ cmake libssl-dev
+```
+
+libdave must be built before `go build`. The `dave-go-bindings` repo should be cloned as a sibling directory and built with `make`:
+```bash
+cd ../dave-go-bindings && git submodule update --init --recursive && make
 ```
 
 **FFmpeg tests:** ~18 tests are skipped when `ffmpeg` is not on `$PATH`. The native backend requires no external tools.

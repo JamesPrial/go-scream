@@ -60,7 +60,7 @@ func (p *Player) Play(ctx context.Context, guildID, channelID string, frames <-c
 	p.logger.Debug("joining voice channel", "guild", guildID, "channel", channelID)
 
 	// Join the voice channel.
-	vc, err := p.session.ChannelVoiceJoin(ctx, guildID, channelID, false, true)
+	vc, err := p.session.ChannelVoiceJoin(guildID, channelID, false, true)
 	if err != nil {
 		if isEncryptionError(err) {
 			return fmt.Errorf("%w: %w", ErrEncryptionFailed, err)
@@ -69,7 +69,7 @@ func (p *Player) Play(ctx context.Context, guildID, channelID string, frames <-c
 	}
 	defer func() {
 		// Use context.Background() because the caller's ctx may be cancelled.
-		if derr := vc.Disconnect(context.Background()); derr != nil && retErr == nil {
+		if derr := vc.Disconnect(); derr != nil && retErr == nil {
 			retErr = fmt.Errorf("failed to disconnect from voice: %w", derr)
 		}
 	}()

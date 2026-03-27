@@ -1,7 +1,6 @@
 package discord
 
 import (
-	"context"
 	"log/slog"
 	"time"
 
@@ -10,7 +9,7 @@ import (
 
 // Session abstracts the subset of *discordgo.Session methods used by this package.
 type Session interface {
-	ChannelVoiceJoin(ctx context.Context, guildID, channelID string, mute, deaf bool) (VoiceConn, error)
+	ChannelVoiceJoin(guildID, channelID string, mute, deaf bool) (VoiceConn, error)
 	GuildVoiceStates(guildID string) ([]*VoiceState, error)
 }
 
@@ -18,7 +17,7 @@ type Session interface {
 type VoiceConn interface {
 	Speaking(speaking bool) error
 	OpusSendChannel() chan<- []byte
-	Disconnect(ctx context.Context) error
+	Disconnect() error
 }
 
 // VoiceState represents a user's voice connection state in a guild.
@@ -35,15 +34,15 @@ type GoSession struct {
 }
 
 // ChannelVoiceJoin joins the specified voice channel and returns a VoiceConn.
-func (d *GoSession) ChannelVoiceJoin(ctx context.Context, guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
+func (d *GoSession) ChannelVoiceJoin(guildID, channelID string, mute, deaf bool) (VoiceConn, error) {
 	d.Logger.Info("joining voice channel", "guild", guildID, "channel", channelID)
 	start := time.Now()
-	vc, err := d.S.ChannelVoiceJoin(ctx, guildID, channelID, mute, deaf)
+	vc, err := d.S.ChannelVoiceJoin(guildID, channelID, mute, deaf)
 	if err != nil {
 		d.Logger.Error("voice join failed", "guild", guildID, "error", err, "elapsed", time.Since(start))
 		return nil, err
 	}
-	d.Logger.Info("voice join succeeded", "guild", guildID, "status", int(vc.Status), "elapsed", time.Since(start))
+	d.Logger.Info("voice join succeeded", "guild", guildID, "ready", vc.Ready, "elapsed", time.Since(start))
 	return &GoVoiceConn{VC: vc, Logger: d.Logger}, nil
 }
 
@@ -72,7 +71,7 @@ type GoVoiceConn struct {
 
 // Speaking sets the speaking state on the voice connection.
 func (d *GoVoiceConn) Speaking(speaking bool) error {
-	d.Logger.Debug("setting speaking state", "speaking", speaking, "vc_status", int(d.VC.Status))
+	d.Logger.Debug("setting speaking state", "speaking", speaking, "vc_ready", d.VC.Ready)
 	err := d.VC.Speaking(speaking)
 	if err != nil {
 		d.Logger.Error("speaking failed", "speaking", speaking, "error", err)
@@ -84,9 +83,9 @@ func (d *GoVoiceConn) Speaking(speaking bool) error {
 func (d *GoVoiceConn) OpusSendChannel() chan<- []byte { return d.VC.OpusSend }
 
 // Disconnect closes the voice connection.
-func (d *GoVoiceConn) Disconnect(ctx context.Context) error {
-	d.Logger.Info("disconnecting from voice", "vc_status", int(d.VC.Status))
-	err := d.VC.Disconnect(ctx)
+func (d *GoVoiceConn) Disconnect() error {
+	d.Logger.Info("disconnecting from voice", "vc_ready", d.VC.Ready)
+	err := d.VC.Disconnect()
 	if err != nil {
 		d.Logger.Error("disconnect failed", "error", err)
 	}
